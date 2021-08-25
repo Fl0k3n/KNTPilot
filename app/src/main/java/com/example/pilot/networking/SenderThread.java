@@ -13,8 +13,10 @@ public class SenderThread extends Thread {
     private final Socket server;
     private final BlockingQueue<String> jsonMessages;
     private final int BUFF_SIZE = 8 * 1024;
+    private final int HEADER_SIZE;
 
-    public SenderThread(Socket server, BlockingQueue<String> msgQueue) {
+    public SenderThread(Socket server, BlockingQueue<String> msgQueue, int headerSize) {
+        this.HEADER_SIZE = headerSize;
         this.keepSending = true;
         this.server = server;
         this.jsonMessages = msgQueue;
@@ -33,12 +35,17 @@ public class SenderThread extends Thread {
                     if (!this.keepSending)
                         return;
                 }
-
                 // TODO compare performance with these streams/writers cached
-                try (OutputStream outputStream = this.server.getOutputStream();
-                     OutputStreamWriter outWriter = new OutputStreamWriter(outputStream, "UTF-8");
-                     BufferedWriter writer = new BufferedWriter(outWriter, BUFF_SIZE)) {
-                    writer.write(msg, 0, msg.length());
+
+                try  {
+                    OutputStreamWriter outWriter = new OutputStreamWriter(this.server.getOutputStream(), "UTF-8");
+                    BufferedWriter writer = new BufferedWriter(outWriter, BUFF_SIZE);
+                    String header = String.format("%1$-" + HEADER_SIZE + "s", msg.length());
+                    String fullMsg = header + msg;
+                    System.out.println(header);
+
+                    writer.write(fullMsg, 0, fullMsg.length());
+                    writer.flush();
                 } catch (IOException e) {
                     // this thread shouldn't handle this
                     e.printStackTrace();

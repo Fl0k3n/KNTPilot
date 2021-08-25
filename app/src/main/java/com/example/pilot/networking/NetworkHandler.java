@@ -57,13 +57,18 @@ public class NetworkHandler implements Runnable, Sender {
              InputStream stream = new BufferedInputStream(socket.getInputStream(), CHUNK_SIZE)){
             this.socket = socket;
             this.socketIn = stream;
-            SenderThread sender = new SenderThread(socket, messageQueue);
+            this.sender = new SenderThread(socket, messageQueue, HEADER_SIZE);
+            sender.setDaemon(true);
+            sender.start();
 //            benchmark();
             listen();
         } catch (IOException e) {
             e.printStackTrace();
             System.out.println("failed to connect");
-            this.sender.stopSending();
+            if (this.sender != null) {
+                this.sender.stopSending();
+                this.sender = null;
+            }
             this.socket = null;
             return;
         }
