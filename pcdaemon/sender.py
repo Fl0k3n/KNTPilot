@@ -17,9 +17,6 @@ class Sender(ConnectionStateObserver):
         })
 
         msg = f'{len(msg_data): <{self.header_size}}{msg_data}'
-        print(msg[:100])
-        print("*"*100)
-
         self.client_socket.send(msg.encode('utf-8'))
 
     def connection_established(self, client_socket: socket):

@@ -55,6 +55,10 @@ class Listener(ConnectionStateObserver):
     def _handle_msg(self, code: MsgCode, data: Any):
         if code == MsgCode.MOVE_SCREEN:
             self.streamer.move_screen(data['dx'], data['dy'])
+        elif code == MsgCode.CLICK:
+            self.streamer.click(data['x'], data['y'])
+        elif code == MsgCode.CHANGE_MONITOR:
+            self.streamer.change_monitor()
         else:
             raise RuntimeError(
                 f'Received unsupported msg code {code} with data\n{data}')

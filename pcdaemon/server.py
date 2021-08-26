@@ -6,6 +6,7 @@ from ss_sender import SsSender
 from msg_codes import MsgCode
 import socket
 import atexit
+import traceback
 from sender import Sender
 from listener import Listener
 
@@ -60,7 +61,7 @@ def main():
             print(e)
             print('LOST CONNECTION')
         except Exception as e:
-            print(e)
+            traceback.print_exc()
             break
 
 

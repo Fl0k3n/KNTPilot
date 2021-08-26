@@ -37,10 +37,18 @@ public abstract class ImageSwipeListener implements View.OnTouchListener {
                 onSwipe(e1.getX(), e1.getY(), e2.getX(), e2.getY());
                 result = true;
             }
+
             return result;
         }
 
+        @Override
+        public boolean onSingleTapConfirmed(MotionEvent event) {
+            System.out.printf("tapped XY = (%f, %f)\n", event.getX(), event.getY());
+            onClick(event.getX(), event.getY());
+            return true;
+        }
     }
 
     public abstract void onSwipe(float x0, float y0, float x1, float y1);
+    public abstract void onClick(float x, float y);
 }

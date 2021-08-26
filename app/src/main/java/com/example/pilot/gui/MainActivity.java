@@ -4,6 +4,10 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
 import android.os.Message;
+import android.util.DisplayMetrics;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.RelativeLayout;
 
 import com.example.pilot.R;
 import com.example.pilot.networking.MessageHandler;
@@ -12,9 +16,10 @@ import com.example.pilot.networking.SsRcvdObserver;
 import com.example.pilot.utils.ScreenShot;
 
 
-public class MainActivity extends AppCompatActivity implements SsRcvdObserver {
-    private ImageViewer iv;
+public class MainActivity extends AppCompatActivity {
     private UIHandler uiHandler;
+    private NetworkHandler networkHandler;
+    private MessageHandler messageHandler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -22,31 +27,20 @@ public class MainActivity extends AppCompatActivity implements SsRcvdObserver {
         setContentView(R.layout.activity_main);
         System.out.println("Hello world");
 
-        NetworkHandler nh = new NetworkHandler();
-        MessageHandler mh = new MessageHandler(nh);
 
-        iv = new ImageViewer(this, findViewById(R.id.sshotView)) {
-            @Override
-            public void onSwipe(float x0, float y0, float x1, float y1) {
-                mh.sendSwipeMessage(x0, y0, x1, y1);
-            }
-        };
+        networkHandler = new NetworkHandler();
+        messageHandler = new MessageHandler(networkHandler);
 
-        uiHandler = new UIHandler(iv);
+        uiHandler = new UIHandler(messageHandler, this);
 
-        mh.addSSRcvdObserver(this);
-        nh.addMsgRcvdObserver(mh);
-        Thread network = new Thread(nh);
+        messageHandler.addSSRcvdObserver(uiHandler);
 
+        networkHandler.addMsgRcvdObserver(messageHandler);
+
+        Thread network = new Thread(networkHandler);
         network.start();
     }
 
-    @Override
-    public void onScreenShotRcvd(ScreenShot ss) {
-        Message msg = new Message();
-        msg.what = UIMsgCode.UPDATE_IMAGE.ordinal();
-        msg.obj = ss;
-        uiHandler.sendMessage(msg);
-    }
+
 
 }

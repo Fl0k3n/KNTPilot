@@ -59,19 +59,41 @@ public class MessageHandler implements MessageRcvdObserver {
         }
     }
 
-    public void sendSwipeMessage(float x0, float y0, float x1, float y1) {
-        int dx = (int)(x1 - x0), dy = (int)(y1 - y0);
-
+    public void sendSwipeMessage(float real_dx, float real_dy) {
+        int dx = (int)real_dx, dy = (int)real_dy;
+        System.out.printf("SWIPED: %d x %d\n", dx, dy);
         try {
             JSONObject inner = new JSONObject();
             inner.put("dx", dx);
             inner.put("dy", dy);
 
-            String jsonMsg = buildStringMsg(MsgCode.MOVE_SCREEN, inner);
-            sender.enqueueJsonMessageRequest(jsonMsg);
+            sendMsg(MsgCode.MOVE_SCREEN, inner);
         } catch (JSONException e) {
             e.printStackTrace();
         }
     }
 
+    public void sendClickMessage(float x, float y) {
+        try {
+            JSONObject inner = new JSONObject();
+            inner.put("x", x);
+            inner.put("y", y);
+
+            sendMsg(MsgCode.CLICK, inner);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sendMsg(MsgCode code, Object value) throws JSONException {
+        sender.enqueueJsonMessageRequest(buildStringMsg(code, value));
+    }
+
+    public void changeMonitor() {
+        try {
+            sender.enqueueJsonMessageRequest(buildStringMsg(MsgCode.CHANGE_MONITOR, ""));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
 }

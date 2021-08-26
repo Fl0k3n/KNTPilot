@@ -1,8 +1,8 @@
+from input_ctl import InputController
 import threading
 from ss_sender import SsSender
 from fps_ctl import FpsController
 from ss_capturer import SSCapturer
-import mss
 
 
 class Streamer:
@@ -11,6 +11,8 @@ class Streamer:
         self.ss_capturer = ss_capturer
         self.max_fps = max_fps
         self.fps_ctl = FpsController(self.max_fps)
+        self.input_ctl = InputController()
+
         self.keep_streaming = False
         self.stream_lock = threading.Lock()
 
@@ -27,9 +29,9 @@ class Streamer:
         self.fps_ctl.reset()
         self.fps_ctl.start_timer()
 
-        with mss.mss() as sct:
+        with self.ss_capturer:
             while True:
-                ss_b64 = self.ss_capturer.get_ss_base64(sct)
+                ss_b64 = self.ss_capturer.get_ss_base64()
                 with self.stream_lock:
                     if not self.keep_streaming:
                         raise ConnectionError('Stream interrupted')
@@ -42,3 +44,12 @@ class Streamer:
 
     def move_screen(self, dx: int, dy: int):
         self.ss_capturer.move_screen(dx, dy)
+
+    def click(self, x: float, y: float):
+        monitor_num = self.ss_capturer.get_monitor_num()
+        mon_x, mon_y = self.ss_capturer.get_ss_view_topleft()
+        self.input_ctl.move_mouse(mon_x + x, mon_y + y)
+        print(f'REQUESTED CLICK AT {x}, {y}')
+
+    def change_monitor(self):
+        self.ss_capturer.change_monitor()
