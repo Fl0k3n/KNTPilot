@@ -1,5 +1,6 @@
 package com.example.pilot.networking;
 import com.example.pilot.utils.BlockingQueue;
+import com.example.pilot.utils.ConnectionStatusObserver;
 
 import java.net.*;
 import java.io.*;
@@ -12,8 +13,12 @@ public class NetworkHandler implements Runnable, Sender {
     private Socket socket = null;
     private InputStream socketIn = null;
     private SenderThread sender = null;
+    private boolean tryToReconnect = true;
+    private final long DEFAULT_RECONNECT_TIMEOUT_MILLIS = 500;
+    private long reconnect_timeout_millis = DEFAULT_RECONNECT_TIMEOUT_MILLIS;
 
     private final LinkedList<MessageRcvdObserver> msgRcvdObservers;
+    private final LinkedList<ConnectionStatusObserver> connectionStatusObservers;
     private final BlockingQueue<String> messageQueue;
 
     private final int HEADER_SIZE = 10; // bytes
@@ -21,12 +26,17 @@ public class NetworkHandler implements Runnable, Sender {
 
     public NetworkHandler() {
         this.msgRcvdObservers = new LinkedList<>();
+        this.connectionStatusObservers = new LinkedList<>();
         this.messageQueue = new BlockingQueue<>();
     }
 
 
     public synchronized void addMsgRcvdObserver(MessageRcvdObserver obs) {
         msgRcvdObservers.add(obs);
+    }
+
+    public synchronized void addConnectionStatusObserver(ConnectionStatusObserver obs) {
+        connectionStatusObservers.add(obs);
     }
 
     private String recv(int size) throws IOException {
@@ -53,26 +63,50 @@ public class NetworkHandler implements Runnable, Sender {
 
     @Override
     public void run() {
-        try (Socket socket = new Socket(IP_ADDR, PORT);
-             InputStream stream = new BufferedInputStream(socket.getInputStream(), CHUNK_SIZE)){
-            this.socket = socket;
-            this.socketIn = stream;
-            this.sender = new SenderThread(socket, messageQueue, HEADER_SIZE);
-            sender.setDaemon(true);
-            sender.start();
+        while (true) {
+            try (Socket socket = new Socket(IP_ADDR, PORT);
+                 InputStream stream = new BufferedInputStream(socket.getInputStream(), CHUNK_SIZE)) {
+                reconnect_timeout_millis = DEFAULT_RECONNECT_TIMEOUT_MILLIS;
+                System.out.println("Connected");
+                this.socket = socket;
+                this.socketIn = stream;
+                this.sender = new SenderThread(socket, messageQueue, HEADER_SIZE);
+                sender.setDaemon(true);
+                sender.start();
 //            benchmark();
-            listen();
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.out.println("failed to connect");
-            if (this.sender != null) {
-                this.sender.stopSending();
-                this.sender = null;
+                listen();
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.out.println("failed to connect");
+                synchronized (this) {
+                    if (this.sender != null) {
+                        // connection lost
+                        this.sender.stopSending();
+                        this.sender = null;
+                        connectionStatusObservers.forEach(ConnectionStatusObserver::connectionLost);
+                    } else {
+                        // connection was not established
+                        connectionStatusObservers.forEach(ConnectionStatusObserver::failedToConnect);
+                    }
+                    this.socket = null;
+                }
             }
-            this.socket = null;
-            return;
+
+            synchronized (this) {
+                if (!tryToReconnect)
+                    break;
+            }
+
+            try {
+                Thread.sleep(reconnect_timeout_millis);
+                reconnect_timeout_millis *= 2;
+            } catch (InterruptedException e) {
+                synchronized (this) {
+                    if(!tryToReconnect)
+                        break;
+                }
+            }
         }
-        System.out.println("Connected");
     }
 
     private void listen() throws IOException {

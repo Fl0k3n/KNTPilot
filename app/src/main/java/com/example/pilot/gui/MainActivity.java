@@ -43,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
         messageHandler.addSSRcvdObserver(uiHandler);
 
         networkHandler.addMsgRcvdObserver(messageHandler);
+        networkHandler.addConnectionStatusObserver(uiHandler);
 
         initScaleDetector();
 

@@ -24,10 +24,11 @@ import com.example.pilot.R;
 import com.example.pilot.networking.MessageHandler;
 import com.example.pilot.networking.SpecialKeyCode;
 import com.example.pilot.networking.SsRcvdObserver;
+import com.example.pilot.utils.ConnectionStatusObserver;
 import com.example.pilot.utils.ScreenShot;
 
 
-public class UIHandler extends Handler implements SsRcvdObserver {
+public class UIHandler extends Handler implements SsRcvdObserver, ConnectionStatusObserver {
     private ImageViewer iv;
     private MessageHandler  messageHandler;
     private AppCompatActivity activity;
@@ -114,22 +115,47 @@ public class UIHandler extends Handler implements SsRcvdObserver {
 
     @Override
     public void handleMessage(Message msg) {
-        if (msg.what == UIMsgCode.UPDATE_IMAGE.ordinal()) {
-            this.iv.updateImage((ScreenShot)msg.obj);
+        // receives msges from itself but in different thread,
+        // this code will be run in main thread and is able to touch gui
+        UIMsgCode code = UIMsgCode.fromInteger(msg.what);
+
+        switch(code) {
+            case UPDATE_IMAGE:
+                this.iv.updateImage((ScreenShot)msg.obj);
+                break;
+            case FAILED_TO_CONNECT:
+                Toast.makeText(activity, "Failed To Connect.", Toast.LENGTH_LONG).show();
+                break;
+            case CONNECTION_LOST:
+                Toast.makeText(activity, "Connection Lost.", Toast.LENGTH_LONG).show();
+                break;
+            default:
+                throw new RuntimeException("Got unexpected code " + code);
         }
-        else {
-            //TODO
-            System.out.println("UNEXPECTED CODE!!!!!!!!!!!!!!!!");
-        }
+
     }
 
     @Override
     public void onScreenShotRcvd(ScreenShot ss) {
-        Message msg = new Message();
-        msg.what = UIMsgCode.UPDATE_IMAGE.ordinal();
-        msg.obj = ss;
-        this.sendMessage(msg);
+        sendThreadMessage(UIMsgCode.UPDATE_IMAGE, ss);
     }
 
 
+    @Override
+    public void failedToConnect() {
+        sendThreadMessage(UIMsgCode.FAILED_TO_CONNECT, null);
+    }
+
+    @Override
+    public void connectionLost() {
+        sendThreadMessage(UIMsgCode.CONNECTION_LOST, null);
+    }
+
+
+    private void sendThreadMessage(UIMsgCode code, Object val) {
+        Message msg = new Message();
+        msg.what = code.ordinal();
+        msg.obj = val;
+        this.sendMessage(msg);
+    }
 }
