@@ -47,10 +47,8 @@ class Streamer:
         self.ss_capturer.move_screen(dx, dy)
 
     def click(self, x: float, y: float):
-        monitor_num = self.ss_capturer.get_monitor_num()
         mon_x, mon_y = self.ss_capturer.get_ss_view_topleft()
-        self.input_ctl.move_mouse(mon_x + x, mon_y + y)
-        print(f'REQUESTED CLICK AT {x}, {y}')
+        self.input_ctl.click(mon_x + x, mon_y + y)
 
     def change_monitor(self):
         self.ss_capturer.change_monitor()

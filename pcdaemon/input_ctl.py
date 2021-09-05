@@ -1,9 +1,8 @@
 import pyautogui
-from pyautogui import KEYBOARD_KEYS
 
 
 class InputController:
-    def move_mouse(self, x, y):
+    def click(self, x, y):
         prev_x, prev_y = pyautogui.position()
         pyautogui.click(x, y)
         pyautogui.moveTo(prev_x, prev_y)
