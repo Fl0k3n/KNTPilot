@@ -1,3 +1,4 @@
+from special_key_codes import SpecialKeyCode
 from input_ctl import InputController
 import threading
 from ss_sender import SsSender
@@ -53,3 +54,12 @@ class Streamer:
 
     def change_monitor(self):
         self.ss_capturer.change_monitor()
+
+    def rescale(self, ratio: float):
+        self.ss_capturer.rescale(ratio)
+
+    def press_key(self, key: str, code: SpecialKeyCode):
+        if code == SpecialKeyCode.NONE:
+            self.input_ctl.press_key(key)
+        elif code == SpecialKeyCode.BACKSPACE:
+            print("BACKSPACE")

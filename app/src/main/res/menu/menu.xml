@@ -1,0 +1,14 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/showKeyboard"
+        android:title="Keyboard"
+        app:showAsAction="always"
+    />
+    <item
+        android:id="@+id/change_monitor_btn"
+        android:title="Change Monitor"
+        app:showAsAction="always"
+        />
+
+</menu>

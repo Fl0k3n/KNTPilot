@@ -12,3 +12,7 @@ class MsgCode(Enum):
     CLICK = 2           # <-
     # body = empty string
     CHANGE_MONITOR = 3  # <-
+    # body = ratio: float
+    RESCALE = 4         # <-
+    # body = key: char, special_code: int
+    KEYBOARD_INPUT = 5  # <-

@@ -6,14 +6,26 @@
     android:layout_height="match_parent"
     tools:context=".gui.MainActivity">
 
-    <Button
-        android:id="@+id/change_monitor_btn"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Change Monitor"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="@+id/top_rel_layout"
-        app:layout_constraintStart_toStartOf="@+id/top_rel_layout" />
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/change_monitor_btn"
+        app:layout_constraintEnd_toEndOf="@+id/top_rel_layout">
+
+        <EditText
+            android:id="@+id/keyboardInput"
+            android:layout_width="100dp"
+            android:layout_height="20dp"
+            android:focusable="true"
+            android:text="PLACEHOLDER"
+            android:focusableInTouchMode="true">
+
+
+            <requestFocus></requestFocus>
+        </EditText>
+    </LinearLayout>
+
 
     <RelativeLayout
         android:id="@+id/top_rel_layout"

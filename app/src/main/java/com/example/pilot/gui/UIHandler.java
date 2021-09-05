@@ -1,16 +1,28 @@
 package com.example.pilot.gui;
 
+import android.content.Context;
+import android.hardware.input.InputManager;
 import android.os.Handler;
 import android.os.Message;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.DisplayMetrics;
+import android.view.KeyEvent;
+import android.view.View;
+import android.view.WindowManager;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.pilot.R;
 import com.example.pilot.networking.MessageHandler;
+import com.example.pilot.networking.SpecialKeyCode;
 import com.example.pilot.networking.SsRcvdObserver;
 import com.example.pilot.utils.ScreenShot;
 
@@ -19,14 +31,51 @@ public class UIHandler extends Handler implements SsRcvdObserver {
     private ImageViewer iv;
     private MessageHandler  messageHandler;
     private AppCompatActivity activity;
+    private EditText textInput;
+    private int textStart;
 
     public UIHandler (MessageHandler messageHandler, AppCompatActivity activity) {
         this.messageHandler = messageHandler;
         this.activity = activity;
+        this.textStart = 0;
+
+        activity.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+
+        textInput = activity.findViewById(R.id.keyboardInput);
+
+        textInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+//                System.out.printf("DATA: %d %d %d\n", start, before, count);
+
+                if (textStart + before > start + count) {
+                    messageHandler.sendKeyboardInput('\0', SpecialKeyCode.BACKSPACE);
+                    // TODO
+                }
+                else {
+                    char pressed = s.charAt(start + count - 1);
+//                    System.out.println("PRESSED -> " + pressed);
+                    messageHandler.sendKeyboardInput(pressed, SpecialKeyCode.NONE);
+
+                }
+
+                if (s.charAt(start + count - 1) == '\n') {
+                    textStart = start;
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+
+            }
+        });
 
         ImageView imageView = createImageView();
         initImageViewer(imageView);
-        connectChangeMonitorBtn();
     }
 
     private ImageView createImageView() {
@@ -39,7 +88,7 @@ public class UIHandler extends Handler implements SsRcvdObserver {
         imageView.setScaleType(ImageView.ScaleType.FIT_XY);
 
         RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
-                displayMetrics.widthPixels, displayMetrics.heightPixels / 2);
+                displayMetrics.widthPixels, (int)(displayMetrics.heightPixels * 0.53));
         params.leftMargin = 0;
         params.topMargin = 0;
 
@@ -62,10 +111,6 @@ public class UIHandler extends Handler implements SsRcvdObserver {
         };
     }
 
-    private void connectChangeMonitorBtn() {
-        Button btn = activity.findViewById(R.id.change_monitor_btn);
-        btn.setOnClickListener(e -> messageHandler.changeMonitor());
-    }
 
     @Override
     public void handleMessage(Message msg) {
@@ -73,7 +118,8 @@ public class UIHandler extends Handler implements SsRcvdObserver {
             this.iv.updateImage((ScreenShot)msg.obj);
         }
         else {
-            System.out.println("UNEXPECTED CODE !!!!!!!!!!!!!!!! TODO");
+            //TODO
+            System.out.println("UNEXPECTED CODE!!!!!!!!!!!!!!!!");
         }
     }
 
@@ -84,4 +130,6 @@ public class UIHandler extends Handler implements SsRcvdObserver {
         msg.obj = ss;
         this.sendMessage(msg);
     }
+
+
 }

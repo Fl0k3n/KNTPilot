@@ -6,7 +6,9 @@ public enum MsgCode {
     SSHOT,
     MOVE_SCREEN,
     CLICK,
-    CHANGE_MONITOR;
+    CHANGE_MONITOR,
+    RESCALE,
+    KEYBOARD_INPUT;
 
     public static MsgCode fromInteger(int x) {
         switch(x) {
@@ -18,6 +20,10 @@ public enum MsgCode {
                 return CLICK;
             case 3:
                 return CHANGE_MONITOR;
+            case 4:
+                return RESCALE;
+            case 5:
+                return KEYBOARD_INPUT;
             default:
                 throw new IllegalArgumentException("code [" + x + "] is not supported");
         }

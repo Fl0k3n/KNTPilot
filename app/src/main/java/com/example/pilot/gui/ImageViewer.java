@@ -30,6 +30,7 @@ public abstract class ImageViewer {
                 self.onClick(realX, realY);
             }
         });
+
     }
 
     private float toRealX(float viewX) {

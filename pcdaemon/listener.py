@@ -1,3 +1,4 @@
+from special_key_codes import SpecialKeyCode
 from typing import Any
 from msg_codes import MsgCode
 from streamer import Streamer
@@ -59,6 +60,11 @@ class Listener(ConnectionStateObserver):
             self.streamer.click(data['x'], data['y'])
         elif code == MsgCode.CHANGE_MONITOR:
             self.streamer.change_monitor()
+        elif code == MsgCode.RESCALE:
+            self.streamer.rescale(data['ratio'])
+        elif code == MsgCode.KEYBOARD_INPUT:
+            self.streamer.press_key(
+                data['key'], SpecialKeyCode(data['special_code']))
         else:
             raise RuntimeError(
                 f'Received unsupported msg code {code} with data\n{data}')

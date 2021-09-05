@@ -96,4 +96,26 @@ public class MessageHandler implements MessageRcvdObserver {
             e.printStackTrace();
         }
     }
+
+    public void rescaleImage(float ratio) {
+        try {
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("ratio", (double)ratio);
+            sender.enqueueJsonMessageRequest(buildStringMsg(MsgCode.RESCALE, jsonObject));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void sendKeyboardInput(char key, SpecialKeyCode code) {
+        try {
+            JSONObject jsonObject = new JSONObject();
+            String tmp = "" + key;
+            jsonObject.put("key", tmp);
+            jsonObject.put("special_code", code.ordinal());
+            sender.enqueueJsonMessageRequest((buildStringMsg(MsgCode.KEYBOARD_INPUT, jsonObject)));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
 }
