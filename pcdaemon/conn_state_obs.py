@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from authenticator import Authenticator
 from socket import socket
 
 

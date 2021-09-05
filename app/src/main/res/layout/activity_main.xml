@@ -18,7 +18,6 @@
             android:layout_width="100dp"
             android:layout_height="20dp"
             android:focusable="true"
-            android:text="PLACEHOLDER"
             android:focusableInTouchMode="true">
 
 

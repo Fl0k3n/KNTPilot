@@ -16,3 +16,7 @@ class MsgCode(Enum):
     RESCALE = 4         # <-
     # body = key: char, special_code: int
     KEYBOARD_INPUT = 5  # <-
+    # body = password: str
+    AUTH = 6            # <-
+    # body = is_granted: bool
+    AUTH_CHECKED = 7    # ->

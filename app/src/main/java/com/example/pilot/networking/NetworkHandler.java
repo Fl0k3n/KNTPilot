@@ -9,6 +9,7 @@ import java.util.LinkedList;
 
 public class NetworkHandler implements Runnable, Sender {
     private final int PORT = 9559;
+//    private final String IP_ADDR = "192.168.0.167";
     private final String IP_ADDR = "10.0.2.2";
     private Socket socket = null;
     private InputStream socketIn = null;
@@ -77,7 +78,7 @@ public class NetworkHandler implements Runnable, Sender {
                 listen();
             } catch (IOException e) {
                 e.printStackTrace();
-                System.out.println("failed to connect");
+                System.out.println(e.getMessage());
                 synchronized (this) {
                     if (this.sender != null) {
                         // connection lost
@@ -86,7 +87,7 @@ public class NetworkHandler implements Runnable, Sender {
                         connectionStatusObservers.forEach(ConnectionStatusObserver::connectionLost);
                     } else {
                         // connection was not established
-                        connectionStatusObservers.forEach(ConnectionStatusObserver::failedToConnect);
+                        connectionStatusObservers.forEach(obs -> obs.failedToConnect(e.getMessage()));
                     }
                     this.socket = null;
                 }

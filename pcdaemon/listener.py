@@ -1,3 +1,4 @@
+from authenticator import Authenticator
 from special_key_codes import SpecialKeyCode
 from typing import Any
 from msg_codes import MsgCode
@@ -9,7 +10,8 @@ import threading
 
 
 class Listener(ConnectionStateObserver):
-    def __init__(self, client_socket: socket = None, header_size: int = 10):
+    def __init__(self, auth: Authenticator, client_socket: socket = None, header_size: int = 10):
+        self.auth = auth
         self.client = client_socket
         self.header_size = header_size
         self.streamer = None
@@ -54,6 +56,15 @@ class Listener(ConnectionStateObserver):
             return
 
     def _handle_msg(self, code: MsgCode, data: Any):
+        if code == MsgCode.AUTH:
+            # authenticator will call its state observers
+            self.auth.validate(data['password'], self.client)
+            return
+
+        if not self.auth.is_validated(self.client):
+            # should never happen
+            raise RuntimeError(f"Rcvd code {code} before authentication")
+
         if code == MsgCode.MOVE_SCREEN:
             self.streamer.move_screen(data['dx'], data['dy'])
         elif code == MsgCode.CLICK:
