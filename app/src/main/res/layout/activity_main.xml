@@ -7,32 +7,90 @@
     tools:context=".gui.MainActivity">
 
     <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@+id/change_monitor_btn"
-        app:layout_constraintEnd_toEndOf="@+id/top_rel_layout">
-
-        <EditText
-            android:id="@+id/keyboardInput"
-            android:layout_width="100dp"
-            android:layout_height="20dp"
-            android:focusable="true"
-            android:focusableInTouchMode="true">
-
-
-            <requestFocus></requestFocus>
-        </EditText>
-    </LinearLayout>
-
-
-    <RelativeLayout
-        android:id="@+id/top_rel_layout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:layout_constraintBottom_toTopOf="@+id/change_monitor_btn"
-        tools:layout_editor_absoluteX="0dp">
+        android:orientation="vertical">
 
-    </RelativeLayout>
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/authLayout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:focusableInTouchMode="true"
+            android:focusedByDefault="true">
+
+            <TextView
+                android:id="@+id/textView4"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="132dp"
+                android:text="KNTPilot"
+                android:textSize="56sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <EditText
+                android:id="@+id/AuthInput"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:defaultFocusHighlightEnabled="false"
+                android:ems="10"
+                android:focusedByDefault="true"
+                android:hint="Password"
+                android:inputType="textPersonName"
+                android:password="true"
+                android:textSize="22sp"
+                app:layout_constraintBottom_toTopOf="@+id/authBtn"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/textView4"
+                app:layout_constraintVertical_bias="0.548" ><requestFocus></requestFocus></EditText>
+
+            <Button
+                android:id="@+id/authBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="132dp"
+                android:text="Authenticate"
+                android:textSize="22sp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <LinearLayout
+            android:id="@+id/pilotLayout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone">
+
+                <EditText
+                    android:id="@+id/keyboardInput"
+                    android:layout_width="100dp"
+                    android:layout_height="20dp"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true">
+
+
+                    <requestFocus></requestFocus>
+                </EditText>
+            </LinearLayout>
+
+            <RelativeLayout
+                android:id="@+id/top_rel_layout"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+            </RelativeLayout>
+
+        </LinearLayout>
+    </LinearLayout>
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>

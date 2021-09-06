@@ -20,3 +20,4 @@ gradlew.bat
 env
 pcdaemon/*.jpg
 __pycache__
+.env

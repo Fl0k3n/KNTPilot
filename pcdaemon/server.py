@@ -15,7 +15,6 @@ from dotenv import dotenv_values
 
 
 class Server(SsSender, AuthStateObserver):
-    # _IP_ADDR = '192.168.0.167'
     _HEADER_SIZE = 10
     _MAX_CONNECTIONS = 1  # TODO not ready for more
 
@@ -54,22 +53,22 @@ class Server(SsSender, AuthStateObserver):
         self.streamer.stream()
 
     def send_ss(self, ss_base64: str):
-        self.sender.send_json(MsgCode.SSHOT, ss_base64)
+        self.sender.send_json(MsgCode.SSHOT, {'image': ss_base64})
 
     def auth_suceeded(self, client_socket: socket):
-        self.sender.send_json(MsgCode.AUTH_CHECKED, True)
+        self.sender.send_json(MsgCode.AUTH_CHECKED, {'is_granted': True})
 
     def auth_failed(self, client_socket: socket):
-        self.sender.send_json(MsgCode.AUTH_CHECKED, False)
+        self.sender.send_json(MsgCode.AUTH_CHECKED, {'is_granted': False})
 
 
 def main():
     config = dotenv_values(".env")
 
     auth = Authenticator(config['PASSWORD'])
-    server = Server(config['IP_ADDR'], config['PORT'], auth)
+    server = Server(config['IP_ADDR'], int(config['PORT']), auth)
     ss_capturer = SSCapturer()
-    streamer = Streamer(server, ss_capturer, max_fps=config['MAX_FPS'])
+    streamer = Streamer(server, ss_capturer, max_fps=int(config['MAX_FPS']))
 
     auth.add_auth_state_obs(server)
 

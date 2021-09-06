@@ -3,25 +3,13 @@ package com.example.pilot.gui;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
-import android.os.Message;
-import android.util.DisplayMetrics;
-import android.view.KeyEvent;
 import android.view.Menu;
-import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
-import android.view.WindowManager;
-import android.view.inputmethod.InputMethodManager;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ImageView;
-import android.widget.RelativeLayout;
 
 import com.example.pilot.R;
 import com.example.pilot.networking.MessageHandler;
 import com.example.pilot.networking.NetworkHandler;
-import com.example.pilot.networking.SsRcvdObserver;
-import com.example.pilot.utils.ScreenShot;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -37,9 +25,9 @@ public class MainActivity extends AppCompatActivity {
 
         networkHandler = new NetworkHandler();
         messageHandler = new MessageHandler(networkHandler);
-
         uiHandler = new UIHandler(messageHandler, this);
 
+        messageHandler.addAuthStatusObserver(uiHandler);
         messageHandler.addSSRcvdObserver(uiHandler);
 
         networkHandler.addMsgRcvdObserver(messageHandler);
@@ -57,10 +45,7 @@ public class MainActivity extends AppCompatActivity {
 
         menu.findItem(R.id.showKeyboard)
                 .setOnMenuItemClickListener(c -> {
-                    EditText keyboard = findViewById(R.id.keyboardInput);
-                    keyboard.requestFocus();
-                    InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-                    imm.showSoftInput(keyboard, InputMethodManager.SHOW_IMPLICIT);
+                    uiHandler.changeKeyboardVisibility(false);
                     return true;
                 });
 
@@ -69,6 +54,9 @@ public class MainActivity extends AppCompatActivity {
             messageHandler.changeMonitor();
             return true;
         });
+
+        uiHandler.setMenu(menu);
+        uiHandler.changeMenuItemsVisibility(true);
 
         return super.onCreateOptionsMenu(menu);
     }
@@ -88,8 +76,5 @@ public class MainActivity extends AppCompatActivity {
         };
 
         detector = new ScaleGestureDetector(this, listener);
-
     }
-
-
 }

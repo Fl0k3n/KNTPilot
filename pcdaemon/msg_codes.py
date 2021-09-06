@@ -4,7 +4,7 @@ from enum import Enum
 
 
 class MsgCode(Enum):
-    # body = base64 utf-8 encoded jpg img
+    # body = image: str -> base64 utf-8 encoded jpg img
     SSHOT = 0           # ->
     # body = dx: int, dy: int -> deltas for how much upper left point of screen should be moved
     MOVE_SCREEN = 1     # <-

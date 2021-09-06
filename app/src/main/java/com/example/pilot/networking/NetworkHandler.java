@@ -9,8 +9,8 @@ import java.util.LinkedList;
 
 public class NetworkHandler implements Runnable, Sender {
     private final int PORT = 9559;
-//    private final String IP_ADDR = "192.168.0.167";
-    private final String IP_ADDR = "10.0.2.2";
+    private final String IP_ADDR = "192.168.0.167";
+//    private final String IP_ADDR = "10.0.2.2";
     private Socket socket = null;
     private InputStream socketIn = null;
     private SenderThread sender = null;
@@ -68,7 +68,10 @@ public class NetworkHandler implements Runnable, Sender {
             try (Socket socket = new Socket(IP_ADDR, PORT);
                  InputStream stream = new BufferedInputStream(socket.getInputStream(), CHUNK_SIZE)) {
                 reconnect_timeout_millis = DEFAULT_RECONNECT_TIMEOUT_MILLIS;
+
+                connectionStatusObservers.forEach(ConnectionStatusObserver::connectionEstablished);
                 System.out.println("Connected");
+
                 this.socket = socket;
                 this.socketIn = stream;
                 this.sender = new SenderThread(socket, messageQueue, HEADER_SIZE);
