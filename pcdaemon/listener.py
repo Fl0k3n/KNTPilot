@@ -48,7 +48,7 @@ class Listener(ConnectionStateObserver):
                 self.msg_handler.handle_msg(
                     MsgCode(data['code']), data['body'])
         except (ConnectionAbortedError, ConnectionResetError) as e:
-            self.msg_handler.connetion_lost(e)
+            self.msg_handler.rcving_failed(e)
             return
 
     def connection_established(self, client_socket: socket):

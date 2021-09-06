@@ -1,6 +1,10 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/fpsValue"
+        android:title="FPS: 0"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/upBtn"
         android:title="UP"
         app:showAsAction="always" />

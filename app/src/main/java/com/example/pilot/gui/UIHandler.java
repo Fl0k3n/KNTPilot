@@ -6,6 +6,7 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.DisplayMetrics;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 
 import android.view.inputmethod.InputMethodManager;
@@ -27,7 +28,9 @@ import com.example.pilot.utils.ScreenShot;
 import java.util.Arrays;
 
 
-public class UIHandler extends Handler implements SsRcvdObserver, ConnectionStatusObserver, AuthStatusObserver {
+public class UIHandler extends Handler implements
+        SsRcvdObserver, ConnectionStatusObserver,
+        AuthStatusObserver, FpsUpdater {
     private ImageViewer iv;
     private MessageHandler  messageHandler;
     private AppCompatActivity activity;
@@ -35,6 +38,7 @@ public class UIHandler extends Handler implements SsRcvdObserver, ConnectionStat
     private AuthHandler authHandler;
     private Menu menu;
     private int textStart;
+    private MenuItem fpsBox = null;
 
     public UIHandler (MessageHandler messageHandler, AppCompatActivity activity) {
         this.messageHandler = messageHandler;
@@ -150,6 +154,16 @@ public class UIHandler extends Handler implements SsRcvdObserver, ConnectionStat
                     authHandler.authFailed();
                 // failed auth is handled is AuthHandler
                 break;
+            case UPDATE_FPS:
+                if (fpsBox != null)
+                    fpsBox.setTitle("FPS: " + msg.obj);
+                else if(menu != null)
+                    try {
+                        fpsBox = menu.findItem(R.id.fpsValue);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                break;
             default:
                 throw new RuntimeException("Got unexpected code " + code);
         }
@@ -223,9 +237,13 @@ public class UIHandler extends Handler implements SsRcvdObserver, ConnectionStat
 
     public void changeMenuItemsVisibility(boolean hidden) {
         int[] items = {
-                R.id.monitorBtn, R.id.keyboardBtn, R.id.WinBtn, R.id.upBtn, R.id.downBtn
+                R.id.monitorBtn, R.id.keyboardBtn, R.id.WinBtn, R.id.upBtn, R.id.downBtn, R.id.fpsValue
         };
         Arrays.stream(items).forEach(id -> menu.findItem(id).setVisible(!hidden));
     }
 
+    @Override
+    public void updateFPS(int fps) {
+        sendThreadMessage(UIMsgCode.UPDATE_FPS, fps);
+    }
 }

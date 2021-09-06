@@ -5,7 +5,8 @@ public enum UIMsgCode {
     FAILED_TO_CONNECT,
     CONNECTION_LOST,
     CONNECTION_ESTB,
-    AUTH_STATUS;
+    AUTH_STATUS,
+    UPDATE_FPS;
 
     public static UIMsgCode fromInteger(int x) {
         switch(x) {
@@ -19,6 +20,8 @@ public enum UIMsgCode {
                 return CONNECTION_ESTB;
             case 4:
                 return AUTH_STATUS;
+            case 5:
+                return UPDATE_FPS;
             default:
                 throw new IllegalArgumentException("code [" + x + "] is not supported");
         }

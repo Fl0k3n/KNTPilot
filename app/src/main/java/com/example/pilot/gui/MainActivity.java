@@ -38,6 +38,12 @@ public class MainActivity extends AppCompatActivity {
 
         Thread network = new Thread(networkHandler);
         network.start();
+
+        FPSCounter fpsCounter = new FPSCounter(uiHandler);
+        messageHandler.addSSRcvdObserver(fpsCounter);
+
+        Thread timer = new Thread(fpsCounter);
+        timer.start();
     }
 
     @Override
