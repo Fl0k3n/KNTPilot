@@ -57,7 +57,13 @@ class Streamer:
         self.ss_capturer.rescale(ratio)
 
     def press_key(self, key: str, code: SpecialKeyCode):
-        if code == SpecialKeyCode.NONE:
-            self.input_ctl.press_key(key)
-        elif code == SpecialKeyCode.BACKSPACE:
-            print("BACKSPACE")
+        special_map = {
+            SpecialKeyCode.NONE: key,
+            SpecialKeyCode.BACKSPACE: 'backspace',
+            SpecialKeyCode.WINDOWS_KEY: 'winleft'
+        }
+
+        self.input_ctl.press_key(special_map[code])
+
+    def scroll(self, up: bool):
+        self.input_ctl.scroll(up)

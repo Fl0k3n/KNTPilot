@@ -16,3 +16,6 @@ class InputController:
             except Exception as e:
                 print(f"failed to press key ->{key}<-")
                 print(e)
+
+    def scroll(self, up: bool):
+        pyautogui.scroll(3 if up else -3)

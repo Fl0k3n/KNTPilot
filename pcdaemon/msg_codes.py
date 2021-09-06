@@ -20,3 +20,5 @@ class MsgCode(Enum):
     AUTH = 6            # <-
     # body = is_granted: bool
     AUTH_CHECKED = 7    # ->
+    # body = up: bool
+    SCROLL = 8

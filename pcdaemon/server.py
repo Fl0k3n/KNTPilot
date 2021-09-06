@@ -1,7 +1,9 @@
+from msg_handler import MsgHandler
 from auth_state_obs import AuthStateObserver
 from ss_capturer import SSCapturer
 from authenticator import Authenticator
 from streamer import Streamer
+from stream_msg_handler import StreamMsgHandler
 from conn_state_obs import ConnectionStateObserver
 from typing import List
 from ss_sender import SsSender
@@ -18,11 +20,12 @@ class Server(SsSender, AuthStateObserver):
     _HEADER_SIZE = 10
     _MAX_CONNECTIONS = 1  # TODO not ready for more
 
-    def __init__(self, addr: str, port: int, auth: Authenticator):
+    def __init__(self, addr: str, port: int, auth: Authenticator, msg_handler: MsgHandler):
         self._PORT = port
         self._IP_ADDR = addr
         self.auth = auth
         self.streamer = None
+        self.msg_handler = msg_handler
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -32,13 +35,13 @@ class Server(SsSender, AuthStateObserver):
         self.socket.listen(self._MAX_CONNECTIONS)
 
         self.sender = Sender(header_size=self._HEADER_SIZE)
-        self.listener = Listener(self.auth, header_size=self._HEADER_SIZE)
+        self.listener = Listener(
+            self.msg_handler, header_size=self._HEADER_SIZE)
 
         self.connection_state_observers: List[ConnectionStateObserver] = [
-            self.sender, self.listener, self.auth]
+            self.sender, self.listener, self.auth, self.msg_handler]
 
     def listen_for_connection(self, streamer: Streamer):
-        self.listener.set_streamer(streamer)
         self.streamer = streamer
         print('waiting for connection')
         self.client, self.client_addr = self.socket.accept()
@@ -66,10 +69,13 @@ def main():
     config = dotenv_values(".env")
 
     auth = Authenticator(config['PASSWORD'])
-    server = Server(config['IP_ADDR'], int(config['PORT']), auth)
+    msg_handler = StreamMsgHandler(auth)
     ss_capturer = SSCapturer()
+
+    server = Server(config['IP_ADDR'], int(config['PORT']), auth, msg_handler)
     streamer = Streamer(server, ss_capturer, max_fps=int(config['MAX_FPS']))
 
+    msg_handler.set_streamer(streamer)
     auth.add_auth_state_obs(server)
 
     while True:

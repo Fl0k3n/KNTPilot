@@ -24,6 +24,8 @@ import com.example.pilot.utils.AuthStatusObserver;
 import com.example.pilot.utils.ConnectionStatusObserver;
 import com.example.pilot.utils.ScreenShot;
 
+import java.util.Arrays;
+
 
 public class UIHandler extends Handler implements SsRcvdObserver, ConnectionStatusObserver, AuthStatusObserver {
     private ImageViewer iv;
@@ -52,9 +54,8 @@ public class UIHandler extends Handler implements SsRcvdObserver, ConnectionStat
             public void onTextChanged(CharSequence s, int start, int before, int count) {
 //                System.out.printf("DATA: %d %d %d\n", start, before, count);
 
-                if (textStart + before > start + count) {
+                if(before > count || textStart > start) {
                     messageHandler.sendKeyboardInput('\0', SpecialKeyCode.BACKSPACE);
-                    // TODO
                 }
                 else {
                     char pressed = s.charAt(start + count - 1);
@@ -63,8 +64,11 @@ public class UIHandler extends Handler implements SsRcvdObserver, ConnectionStat
 
                 }
 
-                if (s.charAt(start + count - 1) == '\n') {
-                    textStart = start;
+                if (count == 0) {
+                    textStart = 0;
+                }
+                else if (count > 0 && s.charAt(start + count - 1) == '\n') {
+                    textStart = start + count;
                 }
             }
 
@@ -218,8 +222,10 @@ public class UIHandler extends Handler implements SsRcvdObserver, ConnectionStat
     }
 
     public void changeMenuItemsVisibility(boolean hidden) {
-        menu.findItem(R.id.change_monitor_btn).setVisible(!hidden);
-        menu.findItem(R.id.showKeyboard).setVisible(!hidden);
+        int[] items = {
+                R.id.monitorBtn, R.id.keyboardBtn, R.id.WinBtn, R.id.upBtn, R.id.downBtn
+        };
+        Arrays.stream(items).forEach(id -> menu.findItem(id).setVisible(!hidden));
     }
 
 }

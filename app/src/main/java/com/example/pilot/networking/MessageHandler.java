@@ -149,4 +149,14 @@ public class MessageHandler implements MessageRcvdObserver, AuthSender {
             e.printStackTrace();
         }
     }
+
+    public void sendScrollMessage(boolean up) {
+        try {
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("up", up);
+            sender.enqueueJsonMessageRequest(buildStringMsg(MsgCode.SCROLL, jsonObject));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
 }

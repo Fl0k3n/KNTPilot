@@ -10,6 +10,7 @@ import android.view.ScaleGestureDetector;
 import com.example.pilot.R;
 import com.example.pilot.networking.MessageHandler;
 import com.example.pilot.networking.NetworkHandler;
+import com.example.pilot.networking.SpecialKeyCode;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -43,15 +44,30 @@ public class MainActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu, menu);
 
-        menu.findItem(R.id.showKeyboard)
+        menu.findItem(R.id.keyboardBtn)
                 .setOnMenuItemClickListener(c -> {
                     uiHandler.changeKeyboardVisibility(false);
                     return true;
                 });
 
 
-        menu.findItem(R.id.change_monitor_btn).setOnMenuItemClickListener(e -> {
+        menu.findItem(R.id.monitorBtn).setOnMenuItemClickListener(e -> {
             messageHandler.changeMonitor();
+            return true;
+        });
+
+        menu.findItem(R.id.WinBtn).setOnMenuItemClickListener(e -> {
+           messageHandler.sendKeyboardInput('\0', SpecialKeyCode.WINDOWS_KEY);
+           return true;
+        });
+
+        menu.findItem(R.id.upBtn).setOnMenuItemClickListener(e -> {
+            messageHandler.sendScrollMessage(true);
+            return true;
+        });
+
+        menu.findItem(R.id.downBtn).setOnMenuItemClickListener(e -> {
+            messageHandler.sendScrollMessage(false);
             return true;
         });
 
