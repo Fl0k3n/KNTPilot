@@ -21,5 +21,17 @@
     <item
         android:id="@+id/WinBtn"
         android:title="Windows Key" />
+    <item
+        android:id="@+id/backspaceBtn"
+        android:title="Backspace" />
+    <item
+        android:id="@+id/CtrlBtn"
+        android:title="Ctrl ON" />
+    <item
+        android:id="@+id/AltBtn"
+        android:title="Alt ON" />
+    <item
+        android:id="@+id/ShiftBtn"
+        android:title="Shift ON" />
 
 </menu>

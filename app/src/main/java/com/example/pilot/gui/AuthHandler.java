@@ -30,7 +30,6 @@ public class AuthHandler implements AuthStatusObserver {
             String passwd = input.getText().toString();
             if (passwd.length() > 0) {
                 authSender.sendCredentials(passwd);
-                input.setEnabled(false);
                 authBtn.setEnabled(false);
             }
         });

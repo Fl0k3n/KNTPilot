@@ -1,4 +1,5 @@
-from special_key_codes import SpecialKeyCode
+from typing import Iterable, List
+from special_key_codes import KeyboardModifier, SpecialKeyCode
 from input_ctl import InputController
 import threading
 from ss_sender import SsSender
@@ -56,14 +57,15 @@ class Streamer:
     def rescale(self, ratio: float):
         self.ss_capturer.rescale(ratio)
 
-    def press_key(self, key: str, code: SpecialKeyCode):
+    def press_key(self, key: str, code: SpecialKeyCode, modifiers: Iterable[KeyboardModifier]):
         special_map = {
             SpecialKeyCode.NONE: key,
             SpecialKeyCode.BACKSPACE: 'backspace',
             SpecialKeyCode.WINDOWS_KEY: 'winleft'
         }
+        modifier_strs = [KeyboardModifier.to_string(x) for x in modifiers]
 
-        self.input_ctl.press_key(special_map[code])
+        self.input_ctl.press_key(special_map[code], modifier_strs)
 
     def scroll(self, up: bool):
         self.input_ctl.scroll(up)

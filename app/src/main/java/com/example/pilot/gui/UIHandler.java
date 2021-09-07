@@ -1,5 +1,6 @@
 package com.example.pilot.gui;
 
+import android.content.Context;
 import android.os.Handler;
 import android.os.Message;
 import android.text.Editable;
@@ -18,6 +19,8 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.pilot.R;
+import com.example.pilot.networking.KeyboardInputHandler;
+import com.example.pilot.networking.KeyboardModifier;
 import com.example.pilot.networking.MessageHandler;
 import com.example.pilot.networking.SpecialKeyCode;
 import com.example.pilot.networking.SsRcvdObserver;
@@ -26,68 +29,50 @@ import com.example.pilot.utils.ConnectionStatusObserver;
 import com.example.pilot.utils.ScreenShot;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 
 
 public class UIHandler extends Handler implements
         SsRcvdObserver, ConnectionStatusObserver,
-        AuthStatusObserver, FpsUpdater {
+        AuthStatusObserver, FpsUpdater, KeyboardInputHandler {
     private ImageViewer iv;
-    private MessageHandler  messageHandler;
-    private AppCompatActivity activity;
-    private EditText textInput;
-    private AuthHandler authHandler;
+    private final MessageHandler  messageHandler;
+    private final AppCompatActivity activity;
+    private final AuthHandler authHandler;
     private Menu menu;
-    private int textStart;
     private MenuItem fpsBox = null;
+    private final KeyboardController keyboardController;
+    private final HashMap<KeyboardModifier, MenuItem> menuViews;
+    private final HashMap<KeyboardModifier, String> constantNames;
 
     public UIHandler (MessageHandler messageHandler, AppCompatActivity activity) {
         this.messageHandler = messageHandler;
         this.activity = activity;
-        this.textStart = 0;
+        this.menuViews = new HashMap<>();
+        this.constantNames = new HashMap<>();
 
         authHandler = new AuthHandler(activity, messageHandler);
 
-        textInput = activity.findViewById(R.id.keyboardInput);
+        EditText textInput = activity.findViewById(R.id.keyboardInput);
+        keyboardController = new KeyboardController(this, textInput);
 
-        textInput.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-//                System.out.printf("DATA: %d %d %d\n", start, before, count);
-
-                if(before > count || textStart > start) {
-                    messageHandler.sendKeyboardInput('\0', SpecialKeyCode.BACKSPACE);
-                }
-                else {
-                    char pressed = s.charAt(start + count - 1);
-//                    System.out.println("PRESSED -> " + pressed);
-                    messageHandler.sendKeyboardInput(pressed, SpecialKeyCode.NONE);
-
-                }
-
-                if (count == 0) {
-                    textStart = 0;
-                }
-                else if (count > 0 && s.charAt(start + count - 1) == '\n') {
-                    textStart = start + count;
-                }
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-
-            }
-        });
 
         ImageView imageView = createImageView();
         initImageViewer(imageView);
     }
 
+
     public void setMenu(Menu menu) {
         this.menu = menu;
+
+        Integer[] modifierIds = {R.id.ShiftBtn, R.id.AltBtn, R.id.CtrlBtn};
+        KeyboardModifier[] modifierKeys = {KeyboardModifier.SHIFT_KEY, KeyboardModifier.ALT_KEY, KeyboardModifier.CTRL_KEY};
+        String[] names = {"Shift", "Alt", "Ctrl"};
+        for (int i=0; i<modifierIds.length; i++) {
+            menuViews.put(modifierKeys[i], menu.findItem(modifierIds[i]));
+            constantNames.put(modifierKeys[i], names[i]);
+        }
     }
 
     private ImageView createImageView() {
@@ -231,13 +216,14 @@ public class UIHandler extends Handler implements
         else
             keyboard.requestFocus();
 
-        InputMethodManager imm = (InputMethodManager) activity.getSystemService(activity.INPUT_METHOD_SERVICE);
+        InputMethodManager imm = (InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE);
         imm.showSoftInput(keyboard, hidden ? InputMethodManager.HIDE_IMPLICIT_ONLY : InputMethodManager.SHOW_IMPLICIT);
     }
 
     public void changeMenuItemsVisibility(boolean hidden) {
         int[] items = {
-                R.id.monitorBtn, R.id.keyboardBtn, R.id.WinBtn, R.id.upBtn, R.id.downBtn, R.id.fpsValue
+                R.id.monitorBtn, R.id.keyboardBtn, R.id.WinBtn, R.id.upBtn, R.id.downBtn,
+                R.id.fpsValue, R.id.backspaceBtn, R.id.CtrlBtn, R.id.AltBtn, R.id.ShiftBtn
         };
         Arrays.stream(items).forEach(id -> menu.findItem(id).setVisible(!hidden));
     }
@@ -245,5 +231,17 @@ public class UIHandler extends Handler implements
     @Override
     public void updateFPS(int fps) {
         sendThreadMessage(UIMsgCode.UPDATE_FPS, fps);
+    }
+
+    @Override
+    public void onKeyPressed(char key, SpecialKeyCode code, List<KeyboardModifier> modifiers) {
+        messageHandler.sendKeyboardInput(key, code, modifiers);
+    }
+
+    public void changeKeyboardModifier(KeyboardModifier modifier) {
+        boolean isEnabled = keyboardController.isEnabled(modifier);
+        keyboardController.setKeyboardModifier(modifier, !isEnabled);
+        MenuItem item = menuViews.get(modifier);
+        item.setTitle(constantNames.get(modifier) + (isEnabled ? " ON" : " OFF"));
     }
 }

@@ -8,10 +8,13 @@ import com.example.pilot.utils.ScreenShot;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.lang.reflect.Array;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 
 public class MessageHandler implements MessageRcvdObserver, AuthSender {
@@ -127,17 +130,25 @@ public class MessageHandler implements MessageRcvdObserver, AuthSender {
         }
     }
 
-    public void sendKeyboardInput(char key, SpecialKeyCode code) {
+    public void sendKeyboardInput(char key, SpecialKeyCode code, List<KeyboardModifier> modifiers) {
         try {
             JSONObject jsonObject = new JSONObject();
             String tmp = "" + key;
             jsonObject.put("key", tmp);
             jsonObject.put("special_code", code.ordinal());
+
+            if (modifiers == null)
+                jsonObject.put("key_modes", new LinkedList<>());
+            else
+                jsonObject.put("key_modes",
+                        modifiers.stream().map(Enum::ordinal).collect(Collectors.toList()));
+
             sender.enqueueJsonMessageRequest(buildStringMsg(MsgCode.KEYBOARD_INPUT, jsonObject));
         } catch (JSONException e) {
             e.printStackTrace();
         }
     }
+
 
     @Override
     public void sendCredentials(String password) {

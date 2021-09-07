@@ -1,11 +1,12 @@
 from conn_state_obs import ConnectionStateObserver
-from special_key_codes import SpecialKeyCode
+from special_key_codes import KeyboardModifier, SpecialKeyCode
 from typing import Any
 from msg_codes import MsgCode
 from msg_handler import MsgHandler
 from authenticator import Authenticator
 from streamer import Streamer
 from socket import socket
+import json
 
 
 class StreamMsgHandler(MsgHandler, ConnectionStateObserver):
@@ -39,8 +40,9 @@ class StreamMsgHandler(MsgHandler, ConnectionStateObserver):
         elif code == MsgCode.RESCALE:
             self.streamer.rescale(data['ratio'])
         elif code == MsgCode.KEYBOARD_INPUT:
+            key_modes = json.loads(data['key_modes'])
             self.streamer.press_key(
-                data['key'], SpecialKeyCode(data['special_code']))
+                data['key'], SpecialKeyCode(data['special_code']), [KeyboardModifier(x) for x in key_modes])
         elif code == MsgCode.SCROLL:
             self.streamer.scroll(data['up'])
         else:

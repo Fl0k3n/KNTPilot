@@ -14,7 +14,7 @@ class MsgCode(Enum):
     CHANGE_MONITOR = 3  # <-
     # body = ratio: float
     RESCALE = 4         # <-
-    # body = key: char, special_code: int
+    # body = key: char, special_code: int, key_modes: [int]
     KEYBOARD_INPUT = 5  # <-
     # body = password: str
     AUTH = 6            # <-

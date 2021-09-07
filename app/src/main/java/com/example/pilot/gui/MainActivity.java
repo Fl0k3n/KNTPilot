@@ -8,6 +8,7 @@ import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 
 import com.example.pilot.R;
+import com.example.pilot.networking.KeyboardModifier;
 import com.example.pilot.networking.MessageHandler;
 import com.example.pilot.networking.NetworkHandler;
 import com.example.pilot.networking.SpecialKeyCode;
@@ -63,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         menu.findItem(R.id.WinBtn).setOnMenuItemClickListener(e -> {
-           messageHandler.sendKeyboardInput('\0', SpecialKeyCode.WINDOWS_KEY);
+           messageHandler.sendKeyboardInput('\0', SpecialKeyCode.WINDOWS_KEY, null);
            return true;
         });
 
@@ -77,10 +78,30 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
 
+        menu.findItem(R.id.backspaceBtn).setOnMenuItemClickListener(e -> {
+            messageHandler.sendKeyboardInput('\0', SpecialKeyCode.BACKSPACE, null);
+           return true;
+        });
+
+
+        menu.findItem(R.id.CtrlBtn)
+                .setOnMenuItemClickListener(e -> modifierHandler(KeyboardModifier.CTRL_KEY));
+
+        menu.findItem(R.id.AltBtn)
+                .setOnMenuItemClickListener(e -> modifierHandler(KeyboardModifier.ALT_KEY));
+
+        menu.findItem(R.id.ShiftBtn)
+                .setOnMenuItemClickListener(e -> modifierHandler(KeyboardModifier.SHIFT_KEY));
+
         uiHandler.setMenu(menu);
         uiHandler.changeMenuItemsVisibility(true);
 
         return super.onCreateOptionsMenu(menu);
+    }
+
+    private boolean modifierHandler(KeyboardModifier modifier) {
+        uiHandler.changeKeyboardModifier(modifier);
+        return true;
     }
 
     @Override
