@@ -19,6 +19,8 @@ public class MainActivity extends AppCompatActivity {
     private NetworkHandler networkHandler;
     private MessageHandler messageHandler;
     private ScaleGestureDetector detector;
+    private SoundPlayer soundPlayer;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,9 +30,11 @@ public class MainActivity extends AppCompatActivity {
         networkHandler = new NetworkHandler();
         messageHandler = new MessageHandler(networkHandler);
         uiHandler = new UIHandler(messageHandler, this);
+        soundPlayer = new SoundPlayer();
 
         messageHandler.addAuthStatusObserver(uiHandler);
         messageHandler.addSSRcvdObserver(uiHandler);
+        messageHandler.addAudioFrameRcvdObserver(soundPlayer);
 
         networkHandler.addMsgRcvdObserver(messageHandler);
         networkHandler.addConnectionStatusObserver(uiHandler);
@@ -45,6 +49,9 @@ public class MainActivity extends AppCompatActivity {
 
         Thread timer = new Thread(fpsCounter);
         timer.start();
+
+        Thread soundThread = new Thread(soundPlayer);
+        soundThread.start();
     }
 
     @Override

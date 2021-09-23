@@ -39,8 +39,9 @@ class Streamer:
         # this lock is acquired, not dangerous for now TODO
         with self.stream_lock:
             self.keep_streaming = True
-            self.video_streamer.stream_video()
-            self.sound_streamer.stream_sound()
+
+        self.sound_streamer.stream_sound()
+        self.video_streamer.stream_video()  # blocking, video is streamed from main thread
 
     def move_screen(self, dx: int, dy: int):
         self.ss_capturer.move_screen(dx, dy)
