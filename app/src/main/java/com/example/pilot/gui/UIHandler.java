@@ -158,6 +158,7 @@ public class UIHandler extends Handler implements
     @Override
     public void onScreenShotRcvd(ScreenShot ss) {
         sendThreadMessage(UIMsgCode.UPDATE_IMAGE, ss);
+        this.messageHandler.sendSSRcvdMessage();
     }
 
 

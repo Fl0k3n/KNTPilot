@@ -22,6 +22,7 @@ class VideoStreamer:
     def stop_streaming(self):
         with self.stream_lock:
             self.keep_streaming = False
+            self.sent_overhead = 0
 
     def stream_video(self):
         # possible race condition if stop_streaming is called before

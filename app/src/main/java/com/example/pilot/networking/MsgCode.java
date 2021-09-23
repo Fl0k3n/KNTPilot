@@ -11,7 +11,9 @@ public enum MsgCode {
     KEYBOARD_INPUT,
     AUTH,
     AUTH_CHECKED,
-    SCROLL;
+    SCROLL,
+    SS_RCVD,
+    AUDIO_FRAME;
 
     public static MsgCode fromInteger(int x) {
         switch(x) {
@@ -33,6 +35,10 @@ public enum MsgCode {
                 return AUTH_CHECKED;
             case 8:
                 return SCROLL;
+            case 9:
+                return SS_RCVD;
+            case 10:
+                return AUDIO_FRAME;
             default:
                 throw new IllegalArgumentException("code [" + x + "] is not supported");
         }

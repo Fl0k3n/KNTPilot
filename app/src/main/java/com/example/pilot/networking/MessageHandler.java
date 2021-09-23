@@ -150,6 +150,15 @@ public class MessageHandler implements MessageRcvdObserver, AuthSender {
     }
 
 
+    public void sendSSRcvdMessage() {
+        try {
+            sender.enqueueJsonMessageRequest(buildStringMsg(MsgCode.SS_RCVD, ""));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+
     @Override
     public void sendCredentials(String password) {
         try {

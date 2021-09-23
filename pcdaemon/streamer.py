@@ -1,18 +1,21 @@
+from sound_capturer import SoundCapturer
+from sound_streamer import SoundStreamer
+from sender import Sender
 from typing import Iterable, List
 from video_streamer import VideoStreamer
 from special_key_codes import KeyboardModifier, SpecialKeyCode
 from input_ctl import InputController
 import threading
-from ss_sender import SsSender
-from fps_ctl import FpsController
 from ss_capturer import SSCapturer
 import time
 
 
 class Streamer:
-    def __init__(self, sender: SsSender, ss_capturer: SSCapturer, max_fps: int = 30, max_batch_sent_ss: int = 3) -> None:
+    def __init__(self, sender: Sender, ss_capturer: SSCapturer, sound_capturer: SoundCapturer,
+                 max_fps: int = 30, max_batch_sent_ss: int = 3) -> None:
         self.sender = sender
         self.ss_capturer = ss_capturer
+        self.sound_capturer = sound_capturer
         self.max_fps = max_fps
         self.max_batch_sent_ss = max_batch_sent_ss
         self.input_ctl = InputController()
@@ -23,10 +26,13 @@ class Streamer:
         self.video_streamer = VideoStreamer(
             sender, ss_capturer, max_fps, max_batch_sent_ss)
 
+        self.sound_streamer = SoundStreamer(sender, sound_capturer)
+
     def stop_streaming(self):
         with self.stream_lock:
             self.keep_streaming = False
             self.video_streamer.stop_streaming()
+            self.sound_streamer.stop_streaming()
 
     def stream(self):
         # possible race condition if stop_streaming is called before
@@ -34,6 +40,7 @@ class Streamer:
         with self.stream_lock:
             self.keep_streaming = True
             self.video_streamer.stream_video()
+            self.sound_streamer.stream_sound()
 
     def move_screen(self, dx: int, dy: int):
         self.ss_capturer.move_screen(dx, dy)
