@@ -22,3 +22,5 @@ class MsgCode(Enum):
     AUTH_CHECKED = 7    # ->
     # body = up: bool
     SCROLL = 8
+    # body = empty string
+    SS_RCVD = 9

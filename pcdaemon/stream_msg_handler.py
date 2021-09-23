@@ -45,6 +45,8 @@ class StreamMsgHandler(MsgHandler, ConnectionStateObserver):
                 data['key'], SpecialKeyCode(data['special_code']), [KeyboardModifier(x) for x in key_modes])
         elif code == MsgCode.SCROLL:
             self.streamer.scroll(data['up'])
+        elif code == MsgCode.SS_RCVD:
+            self.streamer.ss_rcvd()
         else:
             raise RuntimeError(
                 f'Received unsupported msg code {code} with data\n{data}')
