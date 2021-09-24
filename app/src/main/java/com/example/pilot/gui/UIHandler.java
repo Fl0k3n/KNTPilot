@@ -224,7 +224,8 @@ public class UIHandler extends Handler implements
     public void changeMenuItemsVisibility(boolean hidden) {
         int[] items = {
                 R.id.monitorBtn, R.id.keyboardBtn, R.id.WinBtn, R.id.upBtn, R.id.downBtn,
-                R.id.fpsValue, R.id.backspaceBtn, R.id.CtrlBtn, R.id.AltBtn, R.id.ShiftBtn
+                R.id.fpsValue, R.id.backspaceBtn, R.id.CtrlBtn, R.id.AltBtn, R.id.ShiftBtn,
+                R.id.muteBtn
         };
         Arrays.stream(items).forEach(id -> menu.findItem(id).setVisible(!hidden));
     }
@@ -244,5 +245,9 @@ public class UIHandler extends Handler implements
         keyboardController.setKeyboardModifier(modifier, !isEnabled);
         MenuItem item = menuViews.get(modifier);
         item.setTitle(constantNames.get(modifier) + (isEnabled ? " ON" : " OFF"));
+    }
+
+    public void changeMuteTitle(boolean isMuted) {
+        this.menu.findItem(R.id.muteBtn).setTitle(isMuted ? "Unmute" : "Mute");
     }
 }

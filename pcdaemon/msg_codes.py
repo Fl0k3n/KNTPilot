@@ -26,3 +26,7 @@ class MsgCode(Enum):
     SS_RCVD = 9
     # body = frame: bytes -> base64 utf-8 encoded wav data
     AUDIO_FRAME = 10
+    # body = empty string
+    MUTE = 11
+    # body = empty string
+    UNMUTE = 12

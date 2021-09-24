@@ -12,12 +12,14 @@ import com.example.pilot.utils.BlockingQueue;
 public class SoundPlayer implements AudioFrameRcvdObserver, Runnable {
     private BlockingQueue<AudioFrame> buffer;
     private AudioTrack audioTrack;
+    private boolean muted;
 
     public SoundPlayer() {
-        this(44100, 4096 * 4);
+        this(true, 44100, 512);
     }
 
-    public SoundPlayer(int sampleRate, int internalBufferSize) {
+    public SoundPlayer(boolean isMuted, int sampleRate, int internalBufferSize) {
+        muted = isMuted;
         buffer = new BlockingQueue<>();
         audioTrack = new AudioTrack(
                 new AudioAttributes.Builder()
@@ -33,6 +35,16 @@ public class SoundPlayer implements AudioFrameRcvdObserver, Runnable {
                 AudioManager.AUDIO_SESSION_ID_GENERATE);
     }
 
+    public synchronized boolean isMuted() {
+        return muted;
+    }
+
+    public synchronized void setMuted(boolean muted) {
+        this.muted = muted;
+        buffer.flush();
+        audioTrack.flush();
+    }
+
     @Override
     public void onAudioFrameRcvd(AudioFrame frame) {
         buffer.put(frame);
@@ -40,14 +52,18 @@ public class SoundPlayer implements AudioFrameRcvdObserver, Runnable {
 
     @Override
     public void run() {
-        audioTrack.flush();
-        audioTrack.play();
+        synchronized (this) {
+            audioTrack.flush();
+            audioTrack.play();
+        }
 
         while (true) {
             try {
                 AudioFrame frame = buffer.get();
                 byte[] bytes = frame.getBytes();
-                audioTrack.write(bytes, 0, bytes.length);
+                synchronized (this) {
+                    audioTrack.write(bytes, 0, bytes.length);
+                }
             } catch (InterruptedException e) {
                 break;
             }

@@ -190,4 +190,13 @@ public class MessageHandler implements MessageRcvdObserver, AuthSender {
             e.printStackTrace();
         }
     }
+
+    public void sendMuteMessage(boolean isMuted) {
+        try {
+            sender.enqueueJsonMessageRequest(
+                    buildStringMsg(isMuted ? MsgCode.MUTE : MsgCode.UNMUTE, ""));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
 }

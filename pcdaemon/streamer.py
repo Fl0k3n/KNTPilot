@@ -71,3 +71,9 @@ class Streamer:
 
     def ss_rcvd(self):
         self.video_streamer.ss_rcvd()
+
+    def mute_sound(self):
+        self.sound_streamer.mute()
+
+    def unmute_sound(self):
+        self.sound_streamer.unmute()

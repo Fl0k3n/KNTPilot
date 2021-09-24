@@ -15,8 +15,12 @@ public class BlockingQueue<T> {
     }
 
     public synchronized T get() throws InterruptedException {
-        while (tasks.size() == 0)
+        while (tasks.isEmpty())
             this.wait();
         return this.tasks.removeFirst();
+    }
+
+    public synchronized void flush() {
+        tasks.clear();
     }
 }

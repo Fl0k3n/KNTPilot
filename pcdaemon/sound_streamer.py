@@ -20,11 +20,7 @@ class SoundStreamer(SoundCapturedObserver):
         with self.stream_lock:
             self.keep_streaming = False
             self.sound_capturer.stop_capturing()
-            while True:
-                try:
-                    self.buffer.get(block=False)  # flush
-                except queue.Empty:
-                    break
+            self.buffer.put('\0')  # wake from blocking wait on buffer data
 
     def on_frame_captured(self, frame: bytes):
         frame64 = base64.b64encode(frame).decode('utf-8')
@@ -48,6 +44,7 @@ class SoundStreamer(SoundCapturedObserver):
 
             with self.stream_lock:
                 if not self.keep_streaming:
+                    self._flush_buffer()
                     break
             try:
                 self.sender.send_audio_frame(data)
@@ -56,3 +53,21 @@ class SoundStreamer(SoundCapturedObserver):
             except Exception as e:
                 print('Failed to send sound data', e)
                 break
+
+    def _flush_buffer(self):
+        # caller should hold self.stream_lock
+        while True:
+            try:
+                self.buffer.get(block=False)  # flush
+            except queue.Empty:
+                break
+
+    def mute(self):
+        with self.stream_lock:
+            self.sound_capturer.change_capture_mode(False)
+            self._flush_buffer()
+
+    def unmute(self):
+        with self.stream_lock:
+            self._flush_buffer()  # not needed probably
+            self.sound_capturer.change_capture_mode(True)

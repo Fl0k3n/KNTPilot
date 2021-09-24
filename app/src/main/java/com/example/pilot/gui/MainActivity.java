@@ -90,6 +90,14 @@ public class MainActivity extends AppCompatActivity {
            return true;
         });
 
+        menu.findItem(R.id.muteBtn).setOnMenuItemClickListener(e -> {
+            boolean isMuted = soundPlayer.isMuted();
+            soundPlayer.setMuted(!isMuted);
+            uiHandler.changeMuteTitle(!isMuted);
+            messageHandler.sendMuteMessage(!isMuted);
+            return true;
+        });
+
 
         menu.findItem(R.id.CtrlBtn)
                 .setOnMenuItemClickListener(e -> modifierHandler(KeyboardModifier.CTRL_KEY));

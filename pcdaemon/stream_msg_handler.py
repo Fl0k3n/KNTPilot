@@ -47,6 +47,10 @@ class StreamMsgHandler(MsgHandler, ConnectionStateObserver):
             self.streamer.scroll(data['up'])
         elif code == MsgCode.SS_RCVD:
             self.streamer.ss_rcvd()
+        elif code == MsgCode.MUTE:
+            self.streamer.mute_sound()
+        elif code == MsgCode.UNMUTE:
+            self.streamer.unmute_sound()
         else:
             raise RuntimeError(
                 f'Received unsupported msg code {code} with data\n{data}')

@@ -13,32 +13,25 @@ public enum MsgCode {
     AUTH_CHECKED,
     SCROLL,
     SS_RCVD,
-    AUDIO_FRAME;
+    AUDIO_FRAME,
+    MUTE,
+    UNMUTE;
 
     public static MsgCode fromInteger(int x) {
         switch(x) {
-            case 0:
-                return SSHOT;
-            case 1:
-                return MOVE_SCREEN;
-            case 2:
-                return CLICK;
-            case 3:
-                return CHANGE_MONITOR;
-            case 4:
-                return RESCALE;
-            case 5:
-                return KEYBOARD_INPUT;
-            case 6:
-                return AUTH;
-            case 7:
-                return AUTH_CHECKED;
-            case 8:
-                return SCROLL;
-            case 9:
-                return SS_RCVD;
-            case 10:
-                return AUDIO_FRAME;
+            case 0:  return SSHOT;
+            case 1:  return MOVE_SCREEN;
+            case 2:  return CLICK;
+            case 3:  return CHANGE_MONITOR;
+            case 4:  return RESCALE;
+            case 5:  return KEYBOARD_INPUT;
+            case 6:  return AUTH;
+            case 7:  return AUTH_CHECKED;
+            case 8:  return SCROLL;
+            case 9:  return SS_RCVD;
+            case 10: return AUDIO_FRAME;
+            case 11: return MUTE;
+            case 12: return UNMUTE;
             default:
                 throw new IllegalArgumentException("code [" + x + "] is not supported");
         }
