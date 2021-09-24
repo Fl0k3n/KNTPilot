@@ -26,6 +26,14 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+    flavorDimensions "default"
+    productFlavors {
+        prod {
+            buildConfigField "String", "PORT", "\"9559\""
+            buildConfigField "String", "IP_ADDR", "\"192.168.0.167\""
+        }
+    }
 }
 
 dependencies {
@@ -37,3 +45,4 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
 }
+

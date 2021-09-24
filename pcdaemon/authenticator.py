@@ -17,6 +17,7 @@ class Authenticator(ConnectionStateObserver):
 
         self.auth_lock = threading.Lock()
         self.auth_state_changed = threading.Condition(self.auth_lock)
+        self.connected = False
 
     def add_auth_state_obs(self, obs: AuthStateObserver):
         self.auth_state_obss.append(obs)
@@ -38,15 +39,18 @@ class Authenticator(ConnectionStateObserver):
         with self.auth_lock:
             while not self.auths[client_socket]:
                 self.auth_state_changed.wait()
+                if not self.connected:
+                    raise ConnectionError('Auth awaiting interrupted')
 
     def is_validated(self, client_socket: socket) -> bool:
         with self.auth_lock:
             return self.auths[client_socket]
 
     def connection_established(self, client_socket: socket):
-        pass
+        self.connected = True
 
     def connection_lost(self, client_socket: socket):
         with self.auth_lock:
+            self.connected = False
             self.auths[client_socket] = False
             self.auth_state_changed.notify_all()

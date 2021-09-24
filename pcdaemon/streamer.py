@@ -1,16 +1,17 @@
+from socket import socket
+from conn_state_obs import ConnectionStateObserver
 from sound_capturer import SoundCapturer
 from sound_streamer import SoundStreamer
 from sender import Sender
-from typing import Iterable, List
+from typing import Iterable
 from video_streamer import VideoStreamer
 from special_key_codes import KeyboardModifier, SpecialKeyCode
 from input_ctl import InputController
-import threading
+import atexit
 from ss_capturer import SSCapturer
-import time
 
 
-class Streamer:
+class Streamer(ConnectionStateObserver):
     def __init__(self, sender: Sender, ss_capturer: SSCapturer, sound_capturer: SoundCapturer,
                  max_fps: int = 30, max_batch_sent_ss: int = 3) -> None:
         self.sender = sender
@@ -20,26 +21,18 @@ class Streamer:
         self.max_batch_sent_ss = max_batch_sent_ss
         self.input_ctl = InputController()
 
-        self.keep_streaming = False
-        self.stream_lock = threading.Lock()
-
         self.video_streamer = VideoStreamer(
             sender, ss_capturer, max_fps, max_batch_sent_ss)
 
         self.sound_streamer = SoundStreamer(sender, sound_capturer)
 
+        atexit.register(self.stop_streaming)
+
     def stop_streaming(self):
-        with self.stream_lock:
-            self.keep_streaming = False
-            self.video_streamer.stop_streaming()
-            self.sound_streamer.stop_streaming()
+        self.video_streamer.stop_streaming()
+        self.sound_streamer.stop_streaming()
 
     def stream(self):
-        # possible race condition if stop_streaming is called before
-        # this lock is acquired, not dangerous for now TODO
-        with self.stream_lock:
-            self.keep_streaming = True
-
         self.sound_streamer.stream_sound()
         self.video_streamer.stream_video()  # blocking, video is streamed from main thread
 
@@ -77,3 +70,10 @@ class Streamer:
 
     def unmute_sound(self):
         self.sound_streamer.unmute()
+
+    def connection_established(self, client_socket: socket):
+        pass
+
+    def connection_lost(self, client_socket: socket):
+        self.stop_streaming()
+        self.input_ctl.lock_system()

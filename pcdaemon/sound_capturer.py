@@ -7,7 +7,6 @@ from threading import Lock, Condition
 class SoundCapturer:
     def __init__(self, capture_on_startup: bool = False, chunk_size=64,
                  rate=44100, channels=2) -> None:
-        # TODO pavucontrol
         self.CHUNK = chunk_size
         self.RATE = rate
         self.CHANNELS = channels

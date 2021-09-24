@@ -1,6 +1,6 @@
 from conn_state_obs import ConnectionStateObserver
 from special_key_codes import KeyboardModifier, SpecialKeyCode
-from typing import Any
+from typing import Any, List
 from msg_codes import MsgCode
 from msg_handler import MsgHandler
 from authenticator import Authenticator
@@ -11,6 +11,7 @@ import json
 
 class StreamMsgHandler(MsgHandler, ConnectionStateObserver):
     def __init__(self, auth: Authenticator, client_socket: socket = None):
+        super().__init__()
         self.auth = auth
         self.streamer = None
         self.client = client_socket
@@ -58,7 +59,9 @@ class StreamMsgHandler(MsgHandler, ConnectionStateObserver):
     def rcving_failed(self, err: Exception):
         print("Lost connection")
         print(err)
-        self.streamer.stop_streaming()
+        client = self.client
+        for obs in self.conn_state_obss:
+            obs.connection_lost(client)
 
     def connection_lost(self, client_socket: socket):
         self.client = None

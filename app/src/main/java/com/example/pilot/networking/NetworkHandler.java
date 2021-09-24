@@ -1,6 +1,7 @@
 package com.example.pilot.networking;
+import com.example.pilot.networking.observers.ConnectionStatusObserver;
+import com.example.pilot.networking.observers.MessageRcvdObserver;
 import com.example.pilot.utils.BlockingQueue;
-import com.example.pilot.utils.ConnectionStatusObserver;
 
 import java.net.*;
 import java.io.*;
@@ -8,9 +9,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 
 public class NetworkHandler implements Runnable, Sender {
-    private final int PORT = 9559;
-    private final String IP_ADDR = "192.168.0.167";
-//    private final String IP_ADDR = "10.0.2.2";
+    private int port;
+    private String ipAddr;
     private Socket socket = null;
     private InputStream socketIn = null;
     private SenderThread sender = null;
@@ -20,15 +20,22 @@ public class NetworkHandler implements Runnable, Sender {
 
     private final LinkedList<MessageRcvdObserver> msgRcvdObservers;
     private final LinkedList<ConnectionStatusObserver> connectionStatusObservers;
-    private final BlockingQueue<String> messageQueue;
+    private BlockingQueue<String> messageQueue;
 
     private final int HEADER_SIZE = 10; // bytes
     private final int CHUNK_SIZE = 8 * 1024; // bytes
 
-    public NetworkHandler() {
+    public NetworkHandler(String ipAddr, int port) {
+        this.port = port;
+        this.ipAddr = ipAddr;
         this.msgRcvdObservers = new LinkedList<>();
         this.connectionStatusObservers = new LinkedList<>();
-        this.messageQueue = new BlockingQueue<>();
+    }
+
+    public synchronized void setConnectionParams(String ipAddr, int port) {
+        this.ipAddr = ipAddr;
+        this.port = port;
+        reconnect_timeout_millis = DEFAULT_RECONNECT_TIMEOUT_MILLIS;
     }
 
 
@@ -65,13 +72,14 @@ public class NetworkHandler implements Runnable, Sender {
     @Override
     public void run() {
         while (true) {
-            try (Socket socket = new Socket(IP_ADDR, PORT);
+            try (Socket socket = new Socket(ipAddr, port);
                  InputStream stream = new BufferedInputStream(socket.getInputStream(), CHUNK_SIZE)) {
                 reconnect_timeout_millis = DEFAULT_RECONNECT_TIMEOUT_MILLIS;
 
                 connectionStatusObservers.forEach(ConnectionStatusObserver::connectionEstablished);
                 System.out.println("Connected");
 
+                messageQueue = new BlockingQueue<>();
                 this.socket = socket;
                 this.socketIn = stream;
                 this.sender = new SenderThread(socket, messageQueue, HEADER_SIZE);
@@ -103,9 +111,9 @@ public class NetworkHandler implements Runnable, Sender {
 
             try {
                 Thread.sleep(reconnect_timeout_millis);
-                reconnect_timeout_millis *= 2;
             } catch (InterruptedException e) {
                 synchronized (this) {
+                    reconnect_timeout_millis *= 2;
                     if(!tryToReconnect)
                         break;
                 }

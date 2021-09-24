@@ -24,7 +24,9 @@ class SocketSender(ConnectionStateObserver):
             self.client_socket.send(msg.encode('utf-8'))
 
     def connection_established(self, client_socket: socket):
-        self.client_socket = client_socket
+        with self.sender_lock:
+            self.client_socket = client_socket
 
     def connection_lost(self, client_socket: socket):
-        self.client_socket = None
+        with self.sender_lock:
+            self.client_socket = None

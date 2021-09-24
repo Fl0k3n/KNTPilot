@@ -24,6 +24,9 @@ class VideoStreamer:
             self.keep_streaming = False
             self.sent_overhead = 0
 
+        with self.ss_rcvd_lock:
+            self.ss_rcvd_cond.notify_all()  # if its blocked waiting for confirmation
+
     def stream_video(self):
         # possible race condition if stop_streaming is called before
         # this lock is acquired, not dangerous for now TODO
@@ -36,7 +39,7 @@ class VideoStreamer:
         with self.ss_capturer:
             while True:
                 with self.ss_rcvd_lock:
-                    while self.sent_overhead >= self.max_batch_sent_ss:
+                    while self.keep_streaming and self.sent_overhead >= self.max_batch_sent_ss:
                         self.ss_rcvd_cond.wait()
 
                     self.sent_overhead += 1

@@ -42,9 +42,12 @@ class Server(Sender, AuthStateObserver):
         self.connection_state_observers: List[ConnectionStateObserver] = [
             self.sender, self.listener, self.auth, self.msg_handler]
 
+        for obs in self.connection_state_observers:
+            self.msg_handler.add_conn_state_obs(obs)
+
     def listen_for_connection(self, streamer: Streamer):
         self.streamer = streamer
-        print('waiting for connection')
+        print('Waiting for connection...')
         self.client, self.client_addr = self.socket.accept()
         print(f'Connected: {self.client_addr}')
         self._handle_connection()
@@ -54,6 +57,7 @@ class Server(Sender, AuthStateObserver):
             obs.connection_established(self.client)
 
         self.auth.await_authentication(self.client)
+        self.msg_handler.add_conn_state_obs(self.streamer)
         self.streamer.stream()
 
     def send_ss(self, ss_base64: str):
@@ -75,7 +79,11 @@ def main():
     auth = Authenticator(config['PASSWORD'])
     msg_handler = StreamMsgHandler(auth)
     ss_capturer = SSCapturer()
-    sound_capturer = SoundCapturer()  # TODO get init args from config
+
+    sound_args = [int(config['AUDIO_' + arg])
+                  for arg in ('CHUNK_SIZE', 'SAMPLE_RATE', 'CHANNELS')]
+    sound_capturer = SoundCapturer(
+        config['MUTE_ON_START'] == 'false', *sound_args)
 
     server = Server(config['IP_ADDR'], int(config['PORT']), auth, msg_handler)
     streamer = Streamer(server, ss_capturer, sound_capturer,
@@ -90,6 +98,8 @@ def main():
         except (ConnectionError, BrokenPipeError) as e:
             print(e)
             print('LOST CONNECTION')
+            msg_handler.remove_conn_state_obs(streamer)
+            streamer.mute_sound()
         except Exception as e:
             traceback.print_exc()
             break

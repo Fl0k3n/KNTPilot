@@ -1,7 +1,13 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/settingsBtn"
+        android:icon="@drawable/ic_settings"
+        android:title="Settings"
+        app:showAsAction="always" />
+    <item
         android:id="@+id/muteBtn"
+        android:icon="@drawable/ic_muted"
         android:title="Unmute"
         app:showAsAction="always" />
     <item
@@ -10,10 +16,12 @@
         app:showAsAction="never" />
     <item
         android:id="@+id/upBtn"
+        android:icon="@drawable/ic_up"
         android:title="UP"
         app:showAsAction="always" />
     <item
         android:id="@+id/downBtn"
+        android:icon="@drawable/ic_down"
         android:title="DOWN"
         app:showAsAction="always" />
     <item

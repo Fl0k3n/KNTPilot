@@ -4,7 +4,6 @@ import com.example.pilot.utils.BlockingQueue;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
 
@@ -28,35 +27,40 @@ public class SenderThread extends Thread {
 
     @Override
     public void run() {
-        while (true) {
-            try {
-                String msg = jsonMessages.get();
-                synchronized (this) {
-                    if (!this.keepSending)
+        try {
+            OutputStreamWriter outWriter = new OutputStreamWriter(this.server.getOutputStream(), "UTF-8");
+            BufferedWriter writer = new BufferedWriter(outWriter, BUFF_SIZE);
+            while (true) {
+                try {
+                    String msg = jsonMessages.get();
+
+                    synchronized (this) {
+                        if (!this.keepSending)
+                            return;
+                    }
+
+                    try  {
+                        String header = String.format("%1$-" + HEADER_SIZE + "s", msg.length());
+                        String fullMsg = header + msg;
+
+                        writer.write(fullMsg, 0, fullMsg.length());
+                        writer.flush();
+                    } catch (IOException e) {
+                        // this thread shouldn't handle this
+                        e.printStackTrace();
                         return;
-                }
-                // TODO compare performance with these streams/writers cached
+                    }
 
-                try  {
-                    OutputStreamWriter outWriter = new OutputStreamWriter(this.server.getOutputStream(), "UTF-8");
-                    BufferedWriter writer = new BufferedWriter(outWriter, BUFF_SIZE);
-                    String header = String.format("%1$-" + HEADER_SIZE + "s", msg.length());
-                    String fullMsg = header + msg;
-                    System.out.println(header);
-
-                    writer.write(fullMsg, 0, fullMsg.length());
-                    writer.flush();
-                } catch (IOException e) {
-                    // this thread shouldn't handle this
+                } catch (InterruptedException e) {
+                    // TODO shouldn't be interrupted tho
                     e.printStackTrace();
-                    return;
+                    break;
                 }
-
-            } catch (InterruptedException e) {
-                // TODO shouldn't be interrupted tho
-                e.printStackTrace();
-                break;
             }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+
+
     }
 }

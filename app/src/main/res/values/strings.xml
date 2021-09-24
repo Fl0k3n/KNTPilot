@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">KNTPilot</string>
+    <string name="preference_file_key">KNTPilot_shared_preferences</string>
 </resources>
