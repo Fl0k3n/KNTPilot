@@ -1,20 +1,20 @@
-from sound_capturer import SoundCapturer
-from sender import Sender
-from msg_handler import MsgHandler
-from auth_state_obs import AuthStateObserver
-from ss_capturer import SSCapturer
-from authenticator import Authenticator
-from streamer import Streamer
-from stream_msg_handler import StreamMsgHandler
-from conn_state_obs import ConnectionStateObserver
-from typing import List
-from msg_codes import MsgCode
 import socket
 import atexit
 import traceback
-from socket_sender import SocketSender
-from listener import Listener
 from dotenv import dotenv_values
+from typing import List
+from media.sound_capturer import SoundCapturer
+from networking.sender import Sender
+from networking.msg_handler import MsgHandler
+from utils.auth_state_obs import AuthStateObserver
+from media.ss_capturer import SSCapturer
+from utils.authenticator import Authenticator
+from media.streamers.streamer import Streamer
+from networking.stream_msg_handler import StreamMsgHandler
+from networking.conn_state_obs import ConnectionStateObserver
+from utils.msg_codes import MsgCode
+from networking.socket_sender import SocketSender
+from networking.listener import Listener
 
 
 class Server(Sender, AuthStateObserver):

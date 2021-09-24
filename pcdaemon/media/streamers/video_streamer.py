@@ -1,7 +1,7 @@
 import threading
-from ss_sender import SsSender
-from ss_capturer import SSCapturer
-from fps_ctl import FpsController
+from networking.ss_sender import SsSender
+from media.ss_capturer import SSCapturer
+from utils.fps_ctl import FpsController
 
 
 class VideoStreamer:

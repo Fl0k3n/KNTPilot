@@ -1,6 +1,6 @@
-from sound_sender import SoundSender
-from sound_caputured_obs import SoundCapturedObserver
-from sound_capturer import SoundCapturer
+from networking.sound_sender import SoundSender
+from media.sound_caputured_obs import SoundCapturedObserver
+from media.sound_capturer import SoundCapturer
 import threading
 import queue
 import base64

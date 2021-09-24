@@ -21,3 +21,4 @@ env
 pcdaemon/*.jpg
 __pycache__
 .env
+*/testing/*

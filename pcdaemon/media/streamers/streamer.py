@@ -1,14 +1,14 @@
 from socket import socket
-from conn_state_obs import ConnectionStateObserver
-from sound_capturer import SoundCapturer
-from sound_streamer import SoundStreamer
-from sender import Sender
 from typing import Iterable
-from video_streamer import VideoStreamer
-from special_key_codes import KeyboardModifier, SpecialKeyCode
-from input_ctl import InputController
 import atexit
-from ss_capturer import SSCapturer
+from networking.conn_state_obs import ConnectionStateObserver
+from media.sound_capturer import SoundCapturer
+from media.streamers.sound_streamer import SoundStreamer
+from networking.sender import Sender
+from media.streamers.video_streamer import VideoStreamer
+from utils.special_key_codes import KeyboardModifier, SpecialKeyCode
+from media.input_ctl import InputController
+from media.ss_capturer import SSCapturer
 
 
 class Streamer(ConnectionStateObserver):

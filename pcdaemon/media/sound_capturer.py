@@ -1,4 +1,4 @@
-from sound_caputured_obs import SoundCapturedObserver
+from media.sound_caputured_obs import SoundCapturedObserver
 from typing import List
 import pyaudio
 from threading import Lock, Condition

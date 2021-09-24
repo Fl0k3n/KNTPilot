@@ -1,12 +1,12 @@
-from conn_state_obs import ConnectionStateObserver
-from special_key_codes import KeyboardModifier, SpecialKeyCode
-from typing import Any, List
-from msg_codes import MsgCode
-from msg_handler import MsgHandler
-from authenticator import Authenticator
-from streamer import Streamer
-from socket import socket
 import json
+from socket import socket
+from networking.conn_state_obs import ConnectionStateObserver
+from utils.special_key_codes import KeyboardModifier, SpecialKeyCode
+from typing import Any
+from utils.msg_codes import MsgCode
+from networking.msg_handler import MsgHandler
+from utils.authenticator import Authenticator
+from media.streamers.streamer import Streamer
 
 
 class StreamMsgHandler(MsgHandler, ConnectionStateObserver):

@@ -1,16 +1,15 @@
-from auth_state_obs import AuthStateObserver
-from collections import defaultdict
-from socket import socket
+import bcrypt
 import threading
+from socket import socket
 from typing import Dict, List
-from conn_state_obs import ConnectionStateObserver
+from collections import defaultdict
+from utils.auth_state_obs import AuthStateObserver
+from networking.conn_state_obs import ConnectionStateObserver
 
 
 class Authenticator(ConnectionStateObserver):
-    # TODO create more refined auth
-
-    def __init__(self, password: str) -> None:
-        self.pswd = password
+    def __init__(self, hashed_password: str) -> None:
+        self.pswd = hashed_password.encode('utf-8')
         # TODO only one is needed
         self.auths: Dict[socket, bool] = defaultdict(lambda: False)
         self.auth_state_obss: List[AuthStateObserver] = []
@@ -24,7 +23,9 @@ class Authenticator(ConnectionStateObserver):
 
     def validate(self, password: str, client_socket: socket):
         with self.auth_lock:
-            is_valid = password == self.pswd
+            is_valid = bcrypt.checkpw(
+                password.encode(encoding='utf-8'), self.pswd)
+
             self.auths[client_socket] = is_valid
             # call from listenning thread
             for obs in self.auth_state_obss:
@@ -54,3 +55,7 @@ class Authenticator(ConnectionStateObserver):
             self.connected = False
             self.auths[client_socket] = False
             self.auth_state_changed.notify_all()
+
+    @staticmethod
+    def hash_password(passwd: str):
+        return bcrypt.hashpw(passwd.encode(encoding='utf-8'), bcrypt.gensalt())

@@ -1,13 +1,9 @@
-from msg_handler import MsgHandler
-from authenticator import Authenticator
-from special_key_codes import SpecialKeyCode
-from typing import Any
-from msg_codes import MsgCode
-from streamer import Streamer
-from conn_state_obs import ConnectionStateObserver
 from socket import socket
 import json
 import threading
+from msg_handler import MsgHandler
+from utils.msg_codes import MsgCode
+from conn_state_obs import ConnectionStateObserver
 
 
 class Listener(ConnectionStateObserver):
@@ -15,7 +11,6 @@ class Listener(ConnectionStateObserver):
         self.msg_handler = msg_handler
         self.client = client_socket
         self.header_size = header_size
-        self.streamer = None
         self.thread = None
 
         self.keep_listenning = True

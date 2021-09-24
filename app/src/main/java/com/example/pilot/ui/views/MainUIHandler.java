@@ -17,7 +17,6 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.pilot.R;
-import com.example.pilot.ui.AuthHandler;
 import com.example.pilot.ui.utils.FpsUpdater;
 import com.example.pilot.ui.utils.KeyboardController;
 import com.example.pilot.ui.utils.UIMsgCode;

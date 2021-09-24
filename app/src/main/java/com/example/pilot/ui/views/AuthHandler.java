@@ -1,4 +1,4 @@
-package com.example.pilot.ui;
+package com.example.pilot.ui.views;
 
 import android.view.View;
 import android.widget.Button;

@@ -1,9 +1,9 @@
-from conn_state_obs import ConnectionStateObserver
-from typing import Any
-from msg_codes import MsgCode
+import json
 from socket import socket
 from threading import Lock
-import json
+from typing import Any
+from networking.conn_state_obs import ConnectionStateObserver
+from utils.msg_codes import MsgCode
 
 
 class SocketSender(ConnectionStateObserver):

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from conn_state_obs import ConnectionStateObserver
+from networking.conn_state_obs import ConnectionStateObserver
 from typing import Any, List
-from msg_codes import MsgCode
+from utils.msg_codes import MsgCode
 
 
 class MsgHandler(ABC):
