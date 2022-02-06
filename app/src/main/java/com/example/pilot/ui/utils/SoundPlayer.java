@@ -5,23 +5,26 @@ import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 
-import com.example.pilot.networking.observers.AudioFrameRcvdObserver;
-import com.example.pilot.utils.AudioFrame;
-import com.example.pilot.utils.BlockingQueue;
 import com.example.pilot.networking.observers.ConnectionStatusObserver;
 
-public class SoundPlayer implements AudioFrameRcvdObserver, ConnectionStatusObserver, Runnable {
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+
+public class SoundPlayer implements ConnectionStatusObserver, Runnable {
+    private static final int QUEUE_CAPACITY = 1;
     private BlockingQueue<AudioFrame> buffer;
     private AudioTrack audioTrack;
     private boolean muted;
 
     public SoundPlayer() {
-        this(true, 44100, 768);
+        this(true, 44100, 384);
     }
 
     public SoundPlayer(boolean isMuted, int sampleRate, int internalBufferSize) {
         muted = isMuted;
-        buffer = new BlockingQueue<>();
+        buffer = new LinkedBlockingQueue<>(QUEUE_CAPACITY);
+
+        // TODO refactor
         audioTrack = new AudioTrack(
                 new AudioAttributes.Builder()
                         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -42,14 +45,15 @@ public class SoundPlayer implements AudioFrameRcvdObserver, ConnectionStatusObse
 
     public synchronized void setMuted(boolean muted) {
         this.muted = muted;
-        buffer.flush();
+        buffer.clear();
         audioTrack.flush();
     }
 
-    @Override
-    public void onAudioFrameRcvd(AudioFrame frame) {
-        buffer.put(frame);
+
+    public void enqueueAudioFrame(AudioFrame audioFrame) throws InterruptedException {
+        buffer.put(audioFrame);
     }
+
 
     @Override
     public void run() {
@@ -60,7 +64,7 @@ public class SoundPlayer implements AudioFrameRcvdObserver, ConnectionStatusObse
 
         while (true) {
             try {
-                AudioFrame frame = buffer.get();
+                AudioFrame frame = buffer.take();
                 byte[] bytes = frame.getBytes();
                 synchronized (this) {
                     audioTrack.write(bytes, 0, bytes.length);

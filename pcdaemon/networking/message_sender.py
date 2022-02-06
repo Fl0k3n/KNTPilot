@@ -2,11 +2,11 @@ import json
 from socket import socket
 from threading import Lock
 from typing import Any
-from networking.conn_state_obs import ConnectionStateObserver
+from networking.abstract.conn_state_obs import ConnectionStateObserver
 from utils.msg_codes import MsgCode
 
 
-class SocketSender(ConnectionStateObserver):
+class MessageSender(ConnectionStateObserver):
     def __init__(self, client_socket: socket = None, header_size: int = 10):
         self.client_socket = client_socket
         self.header_size = header_size
@@ -19,7 +19,6 @@ class SocketSender(ConnectionStateObserver):
         })
 
         msg = f'{len(msg_data): <{self.header_size}}{msg_data}'
-
         with self.sender_lock:
             self.client_socket.send(msg.encode('utf-8'))
 

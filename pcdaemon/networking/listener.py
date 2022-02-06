@@ -1,9 +1,9 @@
 from socket import socket
 import json
 import threading
-from msg_handler import MsgHandler
+from networking.abstract.msg_handler import MsgHandler
 from utils.msg_codes import MsgCode
-from conn_state_obs import ConnectionStateObserver
+from networking.abstract.conn_state_obs import ConnectionStateObserver
 
 
 class Listener(ConnectionStateObserver):

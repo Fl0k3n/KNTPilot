@@ -24,9 +24,7 @@ class MsgCode(Enum):
     SCROLL = 8
     # body = empty string
     SS_RCVD = 9
-    # body = frame: bytes -> base64 utf-8 encoded wav data
-    AUDIO_FRAME = 10
     # body = empty string
-    MUTE = 11
+    MUTE = 10
     # body = empty string
-    UNMUTE = 12
+    UNMUTE = 11

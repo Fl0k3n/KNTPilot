@@ -1,10 +1,10 @@
 import json
 from socket import socket
-from networking.conn_state_obs import ConnectionStateObserver
+from networking.abstract.conn_state_obs import ConnectionStateObserver
 from utils.special_key_codes import KeyboardModifier, SpecialKeyCode
 from typing import Any
 from utils.msg_codes import MsgCode
-from networking.msg_handler import MsgHandler
+from networking.abstract.msg_handler import MsgHandler
 from utils.authenticator import Authenticator
 from media.streamers.streamer import Streamer
 

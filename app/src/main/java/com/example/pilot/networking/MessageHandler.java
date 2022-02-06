@@ -2,12 +2,10 @@ package com.example.pilot.networking;
 
 import android.util.Pair;
 
-import com.example.pilot.networking.observers.AudioFrameRcvdObserver;
 import com.example.pilot.networking.observers.AuthStatusObserver;
 import com.example.pilot.networking.observers.MessageRcvdObserver;
 import com.example.pilot.networking.observers.SsRcvdObserver;
 import com.example.pilot.utils.KeyboardModifier;
-import com.example.pilot.utils.AudioFrame;
 import com.example.pilot.utils.ScreenShot;
 
 import org.json.JSONException;
@@ -22,14 +20,12 @@ import java.util.stream.Collectors;
 public class MessageHandler implements MessageRcvdObserver, AuthSender {
     private final LinkedList<SsRcvdObserver> ssRcvdObservers;
     private final LinkedList<AuthStatusObserver> authStatusObservers;
-    private final LinkedList<AudioFrameRcvdObserver> audioFrameRcvdObservers;
     private final Sender sender;
 
     public MessageHandler(Sender sender) {
         this.sender = sender;
         this.ssRcvdObservers = new LinkedList<>();
         this.authStatusObservers = new LinkedList<>();
-        this.audioFrameRcvdObservers = new LinkedList<>();
     }
 
     public void addSSRcvdObserver(SsRcvdObserver obs) {
@@ -40,9 +36,6 @@ public class MessageHandler implements MessageRcvdObserver, AuthSender {
         this.authStatusObservers.add(obs);
     }
 
-    public void addAudioFrameRcvdObserver(AudioFrameRcvdObserver obs) {
-        this.audioFrameRcvdObservers.add(obs);
-    }
 
     private Pair<MsgCode, JSONObject> parseMsg(String jsonData) throws JSONException {
         JSONObject parsed = new JSONObject(jsonData);
@@ -83,13 +76,8 @@ public class MessageHandler implements MessageRcvdObserver, AuthSender {
                         AuthStatusObserver::authFailed);
 
                 break;
-            case AUDIO_FRAME:
-                byte[] decodedFrame = Base64.getDecoder().decode(value.getString("frame"));
-                AudioFrame audioFrame = new AudioFrame(decodedFrame);
-                this.audioFrameRcvdObservers.forEach(obs -> obs.onAudioFrameRcvd(audioFrame));
-                break;
             default:
-                throw new RuntimeException("Rcvd unsupported msg code " + code);
+                throw new RuntimeException("Rcvd unsupported msg code " + code); // TODO
         }
 
     }

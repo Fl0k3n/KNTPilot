@@ -6,9 +6,9 @@ import com.example.pilot.utils.ScreenShot;
 import java.util.LinkedList;
 
 public class FPSCounter implements SsRcvdObserver, Runnable {
-    private long tickTimeNano;
-    private LinkedList<Long> timestampsNano;
-    private FpsUpdater fpsUpdater;
+    private final long tickTimeNano;
+    private final LinkedList<Long> timestampsNano;
+    private final FpsUpdater fpsUpdater;
 
     public FPSCounter(FpsUpdater updater) {
         this(updater, 450_000_000);

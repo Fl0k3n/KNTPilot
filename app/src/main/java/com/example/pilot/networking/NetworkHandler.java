@@ -113,11 +113,14 @@ public class NetworkHandler implements Runnable, Sender {
                 Thread.sleep(reconnect_timeout_millis);
             } catch (InterruptedException e) {
                 synchronized (this) {
-                    reconnect_timeout_millis *= 2;
                     if(!tryToReconnect)
                         break;
                 }
             }
+
+//            synchronized (this) {
+//                reconnect_timeout_millis *= 2;
+//            }
         }
     }
 

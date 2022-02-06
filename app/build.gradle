@@ -30,8 +30,8 @@ android {
     flavorDimensions "default"
     productFlavors {
         prod {
-            buildConfigField "String", "PORT", "\"9559\""
-            buildConfigField "String", "IP_ADDR", "\"192.168.0.167\""
+            buildConfigField "String", "PORT", "\"9549\""
+            buildConfigField "String", "IP_ADDR", "\"192.168.0.101\""
         }
     }
 }
@@ -44,5 +44,6 @@ dependencies {
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+    testImplementation 'org.mockito:mockito-core:3.10.0'
 }
 

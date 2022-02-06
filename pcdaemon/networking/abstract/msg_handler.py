@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from networking.conn_state_obs import ConnectionStateObserver
+from networking.abstract.conn_state_obs import ConnectionStateObserver
 from typing import Any, List
 from utils.msg_codes import MsgCode
 

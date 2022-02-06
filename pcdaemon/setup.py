@@ -1,10 +1,6 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(name="kntpilot",
       version='1.1',
-      packages=[
-          'networking',
-          'media',
-          'media.streamers',
-          'utils'
-      ])
+      packages=find_packages(),
+      )

@@ -10,7 +10,9 @@ import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 
 import com.example.pilot.R;
+import com.example.pilot.networking.MediaReceiver;
 import com.example.pilot.ui.events.ImageScaleListener;
+import com.example.pilot.ui.utils.AudioStreamHandler;
 import com.example.pilot.ui.utils.FPSCounter;
 import com.example.pilot.ui.utils.SoundPlayer;
 import com.example.pilot.ui.views.MainUIHandler;
@@ -32,9 +34,12 @@ public class MainActivity extends AppCompatActivity {
     private SoundPlayer soundPlayer;
     private PreferencesLoader preferencesLoader;
     private SettingsHandler settingsHandler;
+    private AudioStreamHandler audioStreamHandler;
+    private MediaReceiver mediaReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        System.out.println("UP*****************************************");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -48,11 +53,17 @@ public class MainActivity extends AppCompatActivity {
 
         soundPlayer = new SoundPlayer();
 
+        // TODO args from somewhere
+        audioStreamHandler = new AudioStreamHandler(soundPlayer, 250, 44100,  256);
+
+        mediaReceiver = new MediaReceiver(connectionParams.second, audioStreamHandler);
+
         messageHandler.addAuthStatusObserver(uiHandler);
         messageHandler.addSSRcvdObserver(uiHandler);
-        messageHandler.addAudioFrameRcvdObserver(soundPlayer);
 
         networkHandler.addMsgRcvdObserver(messageHandler);
+
+        networkHandler.addConnectionStatusObserver(mediaReceiver);
         networkHandler.addConnectionStatusObserver(uiHandler);
         networkHandler.addConnectionStatusObserver(soundPlayer);
 
@@ -110,6 +121,7 @@ public class MainActivity extends AppCompatActivity {
 
         menu.findItem(R.id.muteBtn).setOnMenuItemClickListener(e -> {
             boolean isMuted = soundPlayer.isMuted();
+            audioStreamHandler.restart(); // TODO
             soundPlayer.setMuted(!isMuted);
             uiHandler.changeMuteIcon(!isMuted);
             messageHandler.sendMuteMessage(!isMuted);

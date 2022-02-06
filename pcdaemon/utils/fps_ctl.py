@@ -1,5 +1,7 @@
 import time
 
+# TODO compute fps based on RTT tcp equation
+
 
 class CircularBuff:
     def __init__(self, size: int):

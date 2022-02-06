@@ -1,5 +1,5 @@
 import threading
-from networking.ss_sender import SsSender
+from networking.abstract.ss_sender import SsSender
 from media.ss_capturer import SSCapturer
 from utils.fps_ctl import FpsController
 

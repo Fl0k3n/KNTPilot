@@ -13,7 +13,6 @@ public enum MsgCode {
     AUTH_CHECKED,
     SCROLL,
     SS_RCVD,
-    AUDIO_FRAME,
     MUTE,
     UNMUTE;
 
@@ -29,9 +28,8 @@ public enum MsgCode {
             case 7:  return AUTH_CHECKED;
             case 8:  return SCROLL;
             case 9:  return SS_RCVD;
-            case 10: return AUDIO_FRAME;
-            case 11: return MUTE;
-            case 12: return UNMUTE;
+            case 10: return MUTE;
+            case 11: return UNMUTE;
             default:
                 throw new IllegalArgumentException("code [" + x + "] is not supported");
         }

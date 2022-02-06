@@ -40,12 +40,12 @@ class SoundCapturer:
         while True:
             with self.capture_lock:
                 while not self.keep_capturing:
-                    with self.run_lock:
+                    with self.run_lock:  # TODO unnecessary lock?
                         if not self.running:
                             break
                     self.capture_mode_changed.wait()
 
-            with self.run_lock:
+            with self.run_lock:  # TODO ? ^
                 if not self.running:
                     break
 

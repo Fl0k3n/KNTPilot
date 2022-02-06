@@ -1,32 +1,37 @@
 import socket
 import atexit
 import traceback
+from pathlib import Path
 from dotenv import dotenv_values
 from typing import List
 from media.sound_capturer import SoundCapturer
-from networking.sender import Sender
-from networking.msg_handler import MsgHandler
+from networking.media_handler import MediaHandler
+from networking.abstract.sender import Sender
+from networking.abstract.msg_handler import MsgHandler
 from utils.auth_state_obs import AuthStateObserver
 from media.ss_capturer import SSCapturer
 from utils.authenticator import Authenticator
 from media.streamers.streamer import Streamer
 from networking.stream_msg_handler import StreamMsgHandler
-from networking.conn_state_obs import ConnectionStateObserver
+from networking.abstract.conn_state_obs import ConnectionStateObserver
 from utils.msg_codes import MsgCode
-from networking.socket_sender import SocketSender
+from networking.message_sender import MessageSender
 from networking.listener import Listener
 
+
+# TODO both audio and video should be sent on second socket using UDP
 
 class Server(Sender, AuthStateObserver):
     _HEADER_SIZE = 10
     _MAX_CONNECTIONS = 1  # TODO(pointless?) not ready for more
 
-    def __init__(self, addr: str, port: int, auth: Authenticator, msg_handler: MsgHandler):
-        self._PORT = port
+    def __init__(self, addr: str, tcp_port: int, udp_port: int, auth: Authenticator, msg_handler: MsgHandler):
+        self._PORT = tcp_port
         self._IP_ADDR = addr
         self.auth = auth
         self.streamer = None
         self.msg_handler = msg_handler
+        self.media_handler = MediaHandler(udp_port, addr)
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -35,12 +40,12 @@ class Server(Sender, AuthStateObserver):
         self.socket.bind((self._IP_ADDR, self._PORT))
         self.socket.listen(self._MAX_CONNECTIONS)
 
-        self.sender = SocketSender(header_size=self._HEADER_SIZE)
+        self.sender = MessageSender(header_size=self._HEADER_SIZE)
         self.listener = Listener(
             self.msg_handler, header_size=self._HEADER_SIZE)
 
         self.connection_state_observers: List[ConnectionStateObserver] = [
-            self.sender, self.listener, self.auth, self.msg_handler]
+            self.media_handler, self.sender, self.listener, self.auth, self.msg_handler]
 
         for obs in self.connection_state_observers:
             self.msg_handler.add_conn_state_obs(obs)
@@ -66,6 +71,9 @@ class Server(Sender, AuthStateObserver):
     def send_audio_frame(self, frame64: str):
         self.sender.send_json(MsgCode.AUDIO_FRAME, {'frame': frame64})
 
+    def send_audio_bytes(self, audio_frame: bytes):
+        self.media_handler.send_audio_bytes(audio_frame)
+
     def auth_suceeded(self, client_socket: socket):
         self.sender.send_json(MsgCode.AUTH_CHECKED, {'is_granted': True})
 
@@ -74,7 +82,8 @@ class Server(Sender, AuthStateObserver):
 
 
 def main():
-    config = dotenv_values(".env")
+    path = Path(__file__).parent.joinpath('.env')
+    config = dotenv_values(path)
 
     auth = Authenticator(config['PASSWORD'])
     msg_handler = StreamMsgHandler(auth)
@@ -85,7 +94,8 @@ def main():
     sound_capturer = SoundCapturer(
         config['MUTE_ON_START'] == 'false', *sound_args)
 
-    server = Server(config['IP_ADDR'], int(config['PORT']), auth, msg_handler)
+    server = Server(config['IP_ADDR'], int(config['TCP_PORT']), int(
+        config['UDP_PORT']), auth, msg_handler)
     streamer = Streamer(server, ss_capturer, sound_capturer,
                         max_fps=int(config['MAX_FPS']))
 

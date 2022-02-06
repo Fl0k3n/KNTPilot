@@ -5,6 +5,9 @@ from PIL import Image
 import base64
 from threading import Lock
 
+# TODO send raw instead of base64
+# remove rescaling, always send full size
+
 
 class SSCapturer:
     def __init__(self, top: int = 0, left: int = 0,

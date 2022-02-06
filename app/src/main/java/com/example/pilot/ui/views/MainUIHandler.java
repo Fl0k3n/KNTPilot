@@ -121,7 +121,7 @@ public class MainUIHandler extends Handler implements
                 this.iv.updateImage((ScreenShot)msg.obj);
                 break;
             case FAILED_TO_CONNECT:
-                Toast.makeText(activity, "Failed To Connect. " + msg.obj, Toast.LENGTH_LONG).show();
+                Toast.makeText(activity, "Failed To Connect. " + msg.obj, Toast.LENGTH_SHORT).show();
                 break;
             case CONNECTION_LOST:
                 Toast.makeText(activity, "Connection Lost.", Toast.LENGTH_LONG).show();

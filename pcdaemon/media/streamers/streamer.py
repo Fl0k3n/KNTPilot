@@ -1,10 +1,10 @@
 from socket import socket
 from typing import Iterable
 import atexit
-from networking.conn_state_obs import ConnectionStateObserver
+from networking.abstract.conn_state_obs import ConnectionStateObserver
 from media.sound_capturer import SoundCapturer
 from media.streamers.sound_streamer import SoundStreamer
-from networking.sender import Sender
+from networking.abstract.sender import Sender
 from media.streamers.video_streamer import VideoStreamer
 from utils.special_key_codes import KeyboardModifier, SpecialKeyCode
 from media.input_ctl import InputController

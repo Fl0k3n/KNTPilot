@@ -4,7 +4,7 @@ from socket import socket
 from typing import Dict, List
 from collections import defaultdict
 from utils.auth_state_obs import AuthStateObserver
-from networking.conn_state_obs import ConnectionStateObserver
+from networking.abstract.conn_state_obs import ConnectionStateObserver
 
 
 class Authenticator(ConnectionStateObserver):

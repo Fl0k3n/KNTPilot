@@ -28,6 +28,7 @@ class InputController:
         pyautogui.scroll(3 if up else -3)
 
     def lock_system(self):
-        pyautogui.keyDown('winleft')
-        pyautogui.press('l')
-        pyautogui.keyUp('winleft')
+        pass  # TODO
+        # pyautogui.keyDown('winleft')
+        # pyautogui.press('l')
+        # pyautogui.keyUp('winleft')
