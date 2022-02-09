@@ -1,9 +1,19 @@
-from socket import socket
 import json
 import threading
-from networking.abstract.msg_handler import MsgHandler
+from socket import socket
 from utils.msg_codes import MsgCode
+from networking.abstract.msg_handler import MsgHandler
 from networking.abstract.conn_state_obs import ConnectionStateObserver
+
+
+'''
+TCP Communication Packet
+  |--------------------------------------------|
+  |  code(8)    |    size(16)   | reserved(8)  |
+  |--------------------------------------------|
+  |                  data                      |
+  |--------------------------------------------|
+'''
 
 
 class Listener(ConnectionStateObserver):
@@ -16,10 +26,10 @@ class Listener(ConnectionStateObserver):
         self.keep_listenning = True
         self.keep_listenning_lock = threading.Lock()
 
-    def _recv(self, size: int) -> str:
-        msg = ''
+    def _recv(self, size: int) -> bytes:
+        msg = b''
         while len(msg) < size:
-            cur = self.client.recv(size).decode('utf-8')
+            cur = self.client.recv(size)
             if len(cur) == 0:
                 raise ConnectionAbortedError("Received EOF")
             msg += cur
@@ -32,13 +42,19 @@ class Listener(ConnectionStateObserver):
                 with self.keep_listenning_lock:
                     if not self.keep_listenning:
                         return
-                msg_size = int(self._recv(self.header_size).strip())
-                data = []
-                while len(data) < msg_size:
-                    data.extend(self._recv(
-                        min(CHUNK_SIZE, msg_size - len(data))))
+                msg_size = int(self._recv(
+                    self.header_size).decode('utf-8').strip())
 
-                data = json.loads(''.join(data))
+                data = []
+                recvd_size = 0
+
+                while recvd_size < msg_size:
+                    fragment = self._recv(
+                        min(CHUNK_SIZE, msg_size - len(data)))
+                    recvd_size += len(fragment)
+                    data.append(fragment)
+
+                data = json.loads(b''.join(data).decode('utf-8'))
 
                 self.msg_handler.handle_msg(
                     MsgCode(data['code']), data['body'])

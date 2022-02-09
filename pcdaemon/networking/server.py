@@ -61,6 +61,7 @@ class Server(Sender, AuthStateObserver):
         for obs in self.connection_state_observers:
             obs.connection_established(self.client)
 
+#       self.tls_handler.await_secure_channel(self.client)
         self.auth.await_authentication(self.client)
         self.msg_handler.add_conn_state_obs(self.streamer)
         self.streamer.stream()

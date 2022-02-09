@@ -21,10 +21,21 @@ class MsgCode(Enum):
     # body = is_granted: bool
     AUTH_CHECKED = 7    # ->
     # body = up: bool
-    SCROLL = 8
+    SCROLL = 8          # <-
     # body = empty string
-    SS_RCVD = 9
+    SS_RCVD = 9         # ->
     # body = empty string
-    MUTE = 10
+    MUTE = 10           # <-
     # body = empty string
-    UNMUTE = 11
+    UNMUTE = 11         # <-
+
+
+class TLSCode(Enum):
+    # body = empty string
+    HELLO = 0
+    # body = certificate:  base64encoded-json encoded certificate (for format see security.certificate class)
+    CERTIFICATE = 1
+    #
+    SECRET = 2
+    # body ?
+    SECURE = 3

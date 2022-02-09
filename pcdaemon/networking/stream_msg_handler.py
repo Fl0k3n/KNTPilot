@@ -1,9 +1,10 @@
 import json
 from socket import socket
 from networking.abstract.conn_state_obs import ConnectionStateObserver
+from security.tls_handler import TLSHandler
 from utils.special_key_codes import KeyboardModifier, SpecialKeyCode
 from typing import Any
-from utils.msg_codes import MsgCode
+from utils.msg_codes import MsgCode, TLSCode
 from networking.abstract.msg_handler import MsgHandler
 from utils.authenticator import Authenticator
 from media.streamers.streamer import Streamer
@@ -28,9 +29,8 @@ class StreamMsgHandler(MsgHandler, ConnectionStateObserver):
             self.auth.validate(data['password'], self.client)
             return
 
-        if not self.auth.is_validated(self.client):
-            # should never happen
-            raise RuntimeError(f"Rcvd code {code} before authentication")
+        assert self.auth.is_validated(
+            self.client), f"Rcvd code {code} before authentication"
 
         if code == MsgCode.MOVE_SCREEN:
             self.streamer.move_screen(data['dx'], data['dy'])
