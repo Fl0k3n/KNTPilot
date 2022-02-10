@@ -3,13 +3,14 @@ from socket import socket
 from threading import Lock
 from typing import Any
 from networking.abstract.conn_state_obs import ConnectionStateObserver
+from security.tls_handler import TLSHandler
 from utils.msg_codes import MsgCode
 
 
 class MessageSender(ConnectionStateObserver):
-    def __init__(self, client_socket: socket = None, header_size: int = 10):
+    def __init__(self, tls_handler: TLSHandler, client_socket: socket = None):
         self.client_socket = client_socket
-        self.header_size = header_size
+        self.tls_handler = tls_handler
         self.sender_lock = Lock()
 
     def send_json(self, code: MsgCode, body: Any):
@@ -18,9 +19,12 @@ class MessageSender(ConnectionStateObserver):
             'body': body
         })
 
-        msg = f'{len(msg_data): <{self.header_size}}{msg_data}'
+        # msg = f'{len(msg_data): <{self.header_size}}{msg_data}'
+        msg = self.tls_handler.preprocess_message(
+            self.client_socket, msg_data.encode('utf-8'))
+
         with self.sender_lock:
-            self.client_socket.send(msg.encode('utf-8'))
+            self.client_socket.send(msg)
 
     def connection_established(self, client_socket: socket):
         with self.sender_lock:

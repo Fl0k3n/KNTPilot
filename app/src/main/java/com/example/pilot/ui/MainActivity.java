@@ -2,6 +2,7 @@ package com.example.pilot.ui;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.util.Pair;
 import android.view.Menu;
@@ -11,6 +12,9 @@ import android.view.ScaleGestureDetector;
 
 import com.example.pilot.R;
 import com.example.pilot.networking.MediaReceiver;
+import com.example.pilot.security.CertificateVerifier;
+import com.example.pilot.security.TCPGuard;
+import com.example.pilot.security.TLSHandler;
 import com.example.pilot.ui.events.ImageScaleListener;
 import com.example.pilot.ui.utils.AudioStreamHandler;
 import com.example.pilot.ui.utils.FPSCounter;
@@ -24,6 +28,13 @@ import com.example.pilot.networking.SpecialKeyCode;
 import com.example.pilot.utils.commands.ChangeSettingsVisibilityCommand;
 import com.example.pilot.utils.PreferencesLoader;
 import com.example.pilot.utils.commands.UpdateSettingsCommand;
+
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -41,12 +52,27 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         System.out.println("UP*****************************************");
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
 
         preferencesLoader = new PreferencesLoader(this);
-        Pair<String, Integer> connectionParams = preferencesLoader.loadConnectionParams();
 
-        networkHandler = new NetworkHandler(connectionParams.first, connectionParams.second);
+        saveCAPublicKey(this, preferencesLoader.getCAPublicKeyPath());
+
+        File CAKeyFile = new File(this.getFilesDir(), preferencesLoader.getCAPublicKeyPath());
+
+        TCPGuard tcpGuard = null;
+        try {
+            tcpGuard = new TCPGuard();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        CertificateVerifier certificateVerifier = new CertificateVerifier(CAKeyFile);
+        TLSHandler tlsHandler = new TLSHandler(certificateVerifier, tcpGuard);
+
+        networkHandler = new NetworkHandler(preferencesLoader.getIPAddr(), preferencesLoader.getPort(), tlsHandler);
         messageHandler = new MessageHandler(networkHandler);
         uiHandler = new MainUIHandler(messageHandler, this);
         settingsHandler = new SettingsHandler(this);
@@ -56,7 +82,7 @@ public class MainActivity extends AppCompatActivity {
         // TODO args from somewhere
         audioStreamHandler = new AudioStreamHandler(soundPlayer, 250, 44100,  256);
 
-        mediaReceiver = new MediaReceiver(connectionParams.second, audioStreamHandler);
+        mediaReceiver = new MediaReceiver(preferencesLoader.getPort(), audioStreamHandler);
 
         messageHandler.addAuthStatusObserver(uiHandler);
         messageHandler.addSSRcvdObserver(uiHandler);
@@ -167,8 +193,7 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
 
-        Pair<String, Integer> params = preferencesLoader.loadConnectionParams();
-        settingsHandler.setDefaults(params.first, params.second);
+        settingsHandler.setDefaults(preferencesLoader.getIPAddr(), preferencesLoader.getPort());
     }
 
     private boolean modifierHandler(KeyboardModifier modifier) {
@@ -191,5 +216,27 @@ public class MainActivity extends AppCompatActivity {
         };
 
         detector = new ScaleGestureDetector(this, listener);
+    }
+
+    private void saveCAPublicKey(Context ctx, String path) {
+        // TODO
+        String key = "-----BEGIN PUBLIC KEY-----\n" +
+                "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx1317n8rtVa0lcj5GERl\n" +
+                "FZ4CtW+oWLP/Frqt8lh9E+yQSR+jV5Wj/1yfrV8ybfzU4d+KdR1pejQD8r1mGp6/\n" +
+                "0cxrpoRszE6x5H1ZYUBQFvG6Pqdvi/WEp2t9lLrgTCoUs+7KXRb1WUhnB4afGpoW\n" +
+                "a9FcqQOluQTi9YPTAEsrzp0u6HqtZUXx52784fvCc78smcTERaRnd5nt01Z6Sz0a\n" +
+                "lsjYtnkH2ZycIYHTsql8uHvHmrogIO4IJvstv7YO4k8/AeVvWENS07BnTS2tnNhu\n" +
+                "5URWIS+ybs4L9owFxweKUw5MUnBIKRwehQEa47L1naBIXSwkWdNja+VXvy6sXtRl\n" +
+                "UwIDAQAB\n" +
+                "-----END PUBLIC KEY-----";
+
+        File keyFile = new File(ctx.getFilesDir(), path);
+        try (FileOutputStream fileOutputStream = new FileOutputStream(keyFile);
+             DataOutputStream dataOutputStream = new DataOutputStream(fileOutputStream)) {
+            dataOutputStream.writeBytes(key);
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("failed to save key");
+        }
     }
 }

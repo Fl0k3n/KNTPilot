@@ -10,7 +10,7 @@ class Certificate:
     def __init__(self, not_before_date: date, not_after_date: date,
                  certificate_algorithm: SignatureAlgorithm, certificate_params: SignatureParams,
                  subject_algorithm: AsymmetricAlgorithm, subject_params: AsymmetricParams,
-                 subject_public_key: PublicKey, signature: str = None):
+                 subject_public_key: PublicKey, signature: bytes = None):
         self.not_before_date = not_before_date
         self.not_after_date = not_after_date
 
@@ -41,7 +41,7 @@ class Certificate:
             'not_before_date': self.not_before_date.strftime(self.DATE_FORMAT),
             'not_after_date': self.not_after_date.strftime(self.DATE_FORMAT),
             'certificate_algorithm': self.certificate_algorithm.value,
-            'certificate_params:': self.certificate_params.get_as_dict(),
+            'certificate_params': self.certificate_params.get_as_dict(),
             'subject_algorithm': self.subject_algorithm.value,
             'subject_params': self.subject_params.get_as_dict(),
             'subject_public_key': self.subject_public_key.get_as_dict()
@@ -50,20 +50,5 @@ class Certificate:
         if self.is_signed():
             res['signature'] = base64.b64encode(self.signature).decode('ascii')
 
-        return json.dumps(res)
-
-
-# TODO
-'''
-needed:
-    - rsa 3076 for certificate - in python create signature in java validate
-    - ecc for subject - in python decrypt in java encrypt
-
-    - scrypt for public/private keys
-    
-    - AES 128 both in python and java (dec + enc)
-    - chacha20 enc in python decrypt in java
-
-    - HMAC KDF for symmetric keys
-    
-'''
+        json_cert = json.dumps(res)
+        return json_cert.replace(' ', '')

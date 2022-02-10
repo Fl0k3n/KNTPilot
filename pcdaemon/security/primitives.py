@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 
 
 class HashAlgorithm(Enum):
-    SHA256 = "SHA256"
+    SHA256 = "SHA-256"
 
 
 class AsymmetricAlgorithm(Enum):
@@ -11,7 +11,13 @@ class AsymmetricAlgorithm(Enum):
 
 
 class SignatureAlgorithm(Enum):
-    RSASSA_PSS = "RSASSA_PSS"
+    RSA_PKCS15 = "RSA-PKCS1.5"
+    RSASSA_PSS = "RSASSA-PSS"
+
+
+class SymmetricAlgorithm(Enum):
+    AES = "AES"
+    CHACHA20 = "CHACHA20"
 
 
 class AsymmetricParams(ABC):
@@ -32,6 +38,12 @@ class SignatureParams(ABC):
         pass
 
 
+class SymmetricParams(ABC):
+    @abstractmethod
+    def get_as_dict(self):
+        pass
+
+
 class RSA_AsymmetricParams(AsymmetricParams):
     def __init__(self, key_bit_len: int):
         self.key_bit_len = key_bit_len
@@ -43,6 +55,11 @@ class RSA_AsymmetricParams(AsymmetricParams):
         return {
             "key_bit_len": self.key_bit_len
         }
+
+
+class EmptyParams(SignatureParams):
+    def get_as_dict(self):
+        return {}
 
 
 class RSA_PSS_SignatureParams(SignatureParams):
@@ -65,6 +82,14 @@ class RSA_PublicKey(PublicKey):
 
     def get_as_dict(self):
         return {
-            'n': self.n,
-            'e': self.e
+            'n': str(self.n),
+            'e': str(self.e)
         }
+
+
+class AES_SymmetricParams(SymmetricParams):
+    def __init__(self, key_size: int) -> None:
+        self.key_size = key_size
+
+    def get_as_dict(self):
+        return self.__dict__

@@ -3,13 +3,14 @@ plugins {
 }
 
 android {
-    compileSdkVersion 30
+    compileSdk 30
     buildToolsVersion "30.0.3"
+
 
     defaultConfig {
         applicationId "com.example.pilot"
-        minSdkVersion defaultMinSdkVersion1
-        targetSdkVersion 30
+        minSdk defaultMinSdkVersion1
+        targetSdk 30
         versionCode 1
         versionName "1.0"
 
@@ -23,8 +24,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_1_8;
+        targetCompatibility JavaVersion.VERSION_1_8;
     }
 
     flavorDimensions "default"
@@ -32,6 +33,7 @@ android {
         prod {
             buildConfigField "String", "PORT", "\"9549\""
             buildConfigField "String", "IP_ADDR", "\"192.168.0.101\""
+            buildConfigField "String", "CA_PUBLIC_KEY_PATH", "\"ca_public_key.pem\""
         }
     }
 }

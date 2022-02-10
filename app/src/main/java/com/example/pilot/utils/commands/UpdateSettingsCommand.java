@@ -23,17 +23,16 @@ public class UpdateSettingsCommand implements Command {
     public void execute() {
         String ipAddr = settingsHandler.getIpAddr();
         Integer port = settingsHandler.getPortNumber();
-        Pair<String, Integer> oldParams = preferencesLoader.loadConnectionParams();
 
         if (ipAddr != null)
             preferencesLoader.saveIpAddr(ipAddr);
         else
-            ipAddr = oldParams.first;
+            ipAddr = preferencesLoader.getIPAddr();
 
         if (port != null)
             preferencesLoader.savePort(port);
         else
-            port = oldParams.second;
+            port = preferencesLoader.getPort();
 
 
         networkHandler.setConnectionParams(ipAddr, port);

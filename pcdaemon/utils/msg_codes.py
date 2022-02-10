@@ -31,9 +31,9 @@ class MsgCode(Enum):
 
 
 class TLSCode(Enum):
-    # body = empty string
+    # data is empty
     HELLO = 0
-    # body = certificate:  base64encoded-json encoded certificate (for format see security.certificate class)
+    # data contains utf-8 encoded certificate
     CERTIFICATE = 1
     #
     SECRET = 2

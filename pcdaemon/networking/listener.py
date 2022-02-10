@@ -1,26 +1,16 @@
-import json
 import threading
 from socket import socket
-from utils.msg_codes import MsgCode
 from networking.abstract.msg_handler import MsgHandler
+from security.tls_handler import TLSHandler
 from networking.abstract.conn_state_obs import ConnectionStateObserver
 
 
-'''
-TCP Communication Packet
-  |--------------------------------------------|
-  |  code(8)    |    size(16)   | reserved(8)  |
-  |--------------------------------------------|
-  |                  data                      |
-  |--------------------------------------------|
-'''
-
-
 class Listener(ConnectionStateObserver):
-    def __init__(self, msg_handler: MsgHandler, client_socket: socket = None, header_size: int = 10):
+    def __init__(self, tls_handler: TLSHandler, msg_handler: MsgHandler, client_socket: socket = None):
+        self.tls_handler = tls_handler
         self.msg_handler = msg_handler
         self.client = client_socket
-        self.header_size = header_size
+        self.header_size = tls_handler.get_tcp_header_size()
         self.thread = None
 
         self.keep_listenning = True
@@ -42,8 +32,9 @@ class Listener(ConnectionStateObserver):
                 with self.keep_listenning_lock:
                     if not self.keep_listenning:
                         return
-                msg_size = int(self._recv(
-                    self.header_size).decode('utf-8').strip())
+
+                header = self._recv(self.header_size)
+                msg_size = self.tls_handler.get_data_size(header)
 
                 data = []
                 recvd_size = 0
@@ -54,10 +45,8 @@ class Listener(ConnectionStateObserver):
                     recvd_size += len(fragment)
                     data.append(fragment)
 
-                data = json.loads(b''.join(data).decode('utf-8'))
-
-                self.msg_handler.handle_msg(
-                    MsgCode(data['code']), data['body'])
+                self.tls_handler.handle_tls_message(
+                    header, self.client, b''.join(data))
         except (ConnectionAbortedError, ConnectionResetError) as e:
             self.msg_handler.rcving_failed(e)
             return

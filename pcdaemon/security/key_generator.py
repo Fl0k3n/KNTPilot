@@ -24,13 +24,16 @@ class KeyGenerator:
         return scrypt(password, salt, key_len, N=N, r=r, p=p, num_keys=1)
 
     @classmethod
-    def generate_RSA_key(cls, filename: str, bit_len: int, public_exp: int = 65537) -> RSA.RsaKey:
-        cls._assert_rsa_filename(filename)
+    def generate_RSA_key(cls, public_filename: str, private_filename: str, bit_len: int, public_exp: int = 65537) -> RSA.RsaKey:
+        cls._assert_rsa_filename(private_filename)
 
         key = RSA.generate(bit_len, e=public_exp)
 
-        with open(filename, 'wb') as f:
+        with open(private_filename, 'wb') as f:
             f.write(key.export_key(cls.RSA_KEY_FORMAT))
+
+        with open(public_filename, 'wb') as f:
+            f.write(key.public_key().export_key(cls.RSA_KEY_FORMAT))
 
         return key
 

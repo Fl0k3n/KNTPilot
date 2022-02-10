@@ -8,6 +8,10 @@ from media.sound_capturer import SoundCapturer
 from networking.media_handler import MediaHandler
 from networking.abstract.sender import Sender
 from networking.abstract.msg_handler import MsgHandler
+from security.asymmetric_security_handler import AsymmetricSecurityHandler, RSA_AsymmetricSecurityHandler
+from security.session_handler import SessionHandler
+from security.TCPGuard import TCPGuard
+from security.tls_handler import TLSHandler
 from utils.auth_state_obs import AuthStateObserver
 from media.ss_capturer import SSCapturer
 from utils.authenticator import Authenticator
@@ -22,16 +26,19 @@ from networking.listener import Listener
 # TODO both audio and video should be sent on second socket using UDP
 
 class Server(Sender, AuthStateObserver):
-    _HEADER_SIZE = 10
     _MAX_CONNECTIONS = 1  # TODO(pointless?) not ready for more
 
-    def __init__(self, addr: str, tcp_port: int, udp_port: int, auth: Authenticator, msg_handler: MsgHandler):
+    def __init__(self, addr: str, tcp_port: int, udp_port: int,
+                 auth: Authenticator, msg_handler: MsgHandler,
+                 tls_handler: TLSHandler, session_handler: SessionHandler):
         self._PORT = tcp_port
         self._IP_ADDR = addr
         self.auth = auth
         self.streamer = None
         self.msg_handler = msg_handler
-        self.media_handler = MediaHandler(udp_port, addr)
+        self.session_handler = session_handler
+        self.media_handler = MediaHandler(udp_port, addr)  # TODO
+        self.tls_handler = tls_handler
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -40,12 +47,12 @@ class Server(Sender, AuthStateObserver):
         self.socket.bind((self._IP_ADDR, self._PORT))
         self.socket.listen(self._MAX_CONNECTIONS)
 
-        self.sender = MessageSender(header_size=self._HEADER_SIZE)
-        self.listener = Listener(
-            self.msg_handler, header_size=self._HEADER_SIZE)
+        self.sender = MessageSender(self.tls_handler)
+        self.listener = Listener(self.tls_handler, self.msg_handler)
 
         self.connection_state_observers: List[ConnectionStateObserver] = [
-            self.media_handler, self.sender, self.listener, self.auth, self.msg_handler]
+            self.session_handler, self.tls_handler, self.media_handler,
+            self.sender, self.listener, self.auth, self.msg_handler]
 
         for obs in self.connection_state_observers:
             self.msg_handler.add_conn_state_obs(obs)
@@ -61,7 +68,10 @@ class Server(Sender, AuthStateObserver):
         for obs in self.connection_state_observers:
             obs.connection_established(self.client)
 
-#       self.tls_handler.await_secure_channel(self.client)
+        print("waiting for secure channel")
+        self.tls_handler.await_secure_channel(
+            self.session_handler.get_session(self.client))
+        print("ok secure channel estb")
         self.auth.await_authentication(self.client)
         self.msg_handler.add_conn_state_obs(self.streamer)
         self.streamer.stream()
@@ -83,6 +93,7 @@ class Server(Sender, AuthStateObserver):
 
 
 def main():
+    # TODO IOC
     path = Path(__file__).parent.joinpath('.env')
     config = dotenv_values(path)
 
@@ -90,13 +101,21 @@ def main():
     msg_handler = StreamMsgHandler(auth)
     ss_capturer = SSCapturer()
 
+    asym_handler = RSA_AsymmetricSecurityHandler(
+        Path(config["PRIVATE_KEY_PATH"]))
+
+    tcp_guard = TCPGuard(asym_handler)
+    session_handler = SessionHandler()
+    tls_handler = TLSHandler(
+        Path(config['CERTIFICATE_PATH']), msg_handler, tcp_guard, session_handler)
+
     sound_args = [int(config['AUDIO_' + arg])
                   for arg in ('CHUNK_SIZE', 'SAMPLE_RATE', 'CHANNELS')]
     sound_capturer = SoundCapturer(
         config['MUTE_ON_START'] == 'false', *sound_args)
 
     server = Server(config['IP_ADDR'], int(config['TCP_PORT']), int(
-        config['UDP_PORT']), auth, msg_handler)
+        config['UDP_PORT']), auth, msg_handler, tls_handler, session_handler)
     streamer = Streamer(server, ss_capturer, sound_capturer,
                         max_fps=int(config['MAX_FPS']))
 

@@ -1,6 +1,8 @@
 package com.example.pilot.networking;
 import com.example.pilot.networking.observers.ConnectionStatusObserver;
 import com.example.pilot.networking.observers.MessageRcvdObserver;
+import com.example.pilot.security.SecurityException;
+import com.example.pilot.security.TLSHandler;
 import com.example.pilot.utils.BlockingQueue;
 
 import java.net.*;
@@ -18,6 +20,8 @@ public class NetworkHandler implements Runnable, Sender {
     private final long DEFAULT_RECONNECT_TIMEOUT_MILLIS = 500;
     private long reconnect_timeout_millis = DEFAULT_RECONNECT_TIMEOUT_MILLIS;
 
+    private final TLSHandler tlsHandler;
+
     private final LinkedList<MessageRcvdObserver> msgRcvdObservers;
     private final LinkedList<ConnectionStatusObserver> connectionStatusObservers;
     private BlockingQueue<String> messageQueue;
@@ -25,9 +29,10 @@ public class NetworkHandler implements Runnable, Sender {
     private final int HEADER_SIZE = 10; // bytes
     private final int CHUNK_SIZE = 8 * 1024; // bytes
 
-    public NetworkHandler(String ipAddr, int port) {
+    public NetworkHandler(String ipAddr, int port, TLSHandler tlsHandler) {
         this.port = port;
         this.ipAddr = ipAddr;
+        this.tlsHandler = tlsHandler;
         this.msgRcvdObservers = new LinkedList<>();
         this.connectionStatusObservers = new LinkedList<>();
     }
@@ -76,17 +81,28 @@ public class NetworkHandler implements Runnable, Sender {
                  InputStream stream = new BufferedInputStream(socket.getInputStream(), CHUNK_SIZE)) {
                 reconnect_timeout_millis = DEFAULT_RECONNECT_TIMEOUT_MILLIS;
 
-                connectionStatusObservers.forEach(ConnectionStatusObserver::connectionEstablished);
                 System.out.println("Connected");
+                try {
+                    tlsHandler.establishSecureChannel(socket);
+                } catch (SecurityException e) {
+                    // TODO
+                    e.printStackTrace();
+                    System.out.println(e.getMessage());
+                    return;
+                }
+                System.out.println("Secure connection established");
 
                 messageQueue = new BlockingQueue<>();
                 this.socket = socket;
                 this.socketIn = stream;
                 this.sender = new SenderThread(socket, messageQueue, HEADER_SIZE);
+
                 sender.setDaemon(true);
                 sender.start();
+                connectionStatusObservers.forEach(ConnectionStatusObserver::connectionEstablished);
 //            benchmark();
                 listen();
+
             } catch (IOException e) {
                 e.printStackTrace();
                 System.out.println(e.getMessage());
