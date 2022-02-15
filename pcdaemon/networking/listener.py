@@ -10,7 +10,7 @@ class Listener(ConnectionStateObserver):
         self.tls_handler = tls_handler
         self.msg_handler = msg_handler
         self.client = client_socket
-        self.header_size = tls_handler.get_tcp_header_size()
+        self.header_size = tls_handler.get_basic_tls_header_size()
         self.thread = None
 
         self.keep_listenning = True
@@ -33,20 +33,25 @@ class Listener(ConnectionStateObserver):
                     if not self.keep_listenning:
                         return
 
-                header = self._recv(self.header_size)
-                msg_size = self.tls_handler.get_data_size(header)
+                basic_header = self._recv(self.header_size)
+                msg_size = self.tls_handler.get_total_packet_size(
+                    basic_header) - self.header_size
 
-                data = []
+                print('got header', basic_header)
+                print('expected size', msg_size - 12)
+
+                data = [basic_header]
                 recvd_size = 0
 
                 while recvd_size < msg_size:
                     fragment = self._recv(
-                        min(CHUNK_SIZE, msg_size - len(data)))
+                        min(CHUNK_SIZE, msg_size - recvd_size))
                     recvd_size += len(fragment)
                     data.append(fragment)
 
+                print('got full packet')
                 self.tls_handler.handle_tls_message(
-                    header, self.client, b''.join(data))
+                    self.client, b''.join(data))
         except (ConnectionAbortedError, ConnectionResetError) as e:
             self.msg_handler.rcving_failed(e)
             return

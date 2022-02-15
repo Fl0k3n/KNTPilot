@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Inet4Address;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
@@ -99,13 +101,14 @@ public class MediaReceiver implements Runnable, ConnectionStatusObserver {
     @Override
     public void connectionEstablished() {
         try {
-            socket = new DatagramSocket(port, Inet4Address.getByName(IP_ADDR));
+            socket = new DatagramSocket(null);
             socket.setReuseAddress(true);
+            socket.bind(new InetSocketAddress(IP_ADDR, port));
 
             rcvrThread = new Thread(this);
             rcvrThread.setDaemon(true);
             rcvrThread.start();
-        } catch (SocketException | UnknownHostException e) {
+        } catch (SocketException e) {
             System.out.println("Failed to open socket");
             e.printStackTrace();
         }

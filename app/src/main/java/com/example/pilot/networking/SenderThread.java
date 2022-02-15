@@ -1,24 +1,28 @@
 package com.example.pilot.networking;
 
+import com.example.pilot.security.MessageSecurityPreprocessor;
+import com.example.pilot.security.SecurityException;
 import com.example.pilot.utils.BlockingQueue;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 
 public class SenderThread extends Thread {
     private boolean keepSending;
     private final Socket server;
     private final BlockingQueue<String> jsonMessages;
+    private final MessageSecurityPreprocessor preprocessor;
     private final int BUFF_SIZE = 8 * 1024;
-    private final int HEADER_SIZE;
 
-    public SenderThread(Socket server, BlockingQueue<String> msgQueue, int headerSize) {
-        this.HEADER_SIZE = headerSize;
+    public SenderThread(Socket server, BlockingQueue<String> msgQueue, MessageSecurityPreprocessor preprocessor) {
         this.keepSending = true;
         this.server = server;
         this.jsonMessages = msgQueue;
+        this.preprocessor = preprocessor;
     }
 
     public synchronized void stopSending() {
@@ -28,8 +32,7 @@ public class SenderThread extends Thread {
     @Override
     public void run() {
         try {
-            OutputStreamWriter outWriter = new OutputStreamWriter(this.server.getOutputStream(), "UTF-8");
-            BufferedWriter writer = new BufferedWriter(outWriter, BUFF_SIZE);
+            OutputStream stream = this.server.getOutputStream();
             while (true) {
                 try {
                     String msg = jsonMessages.get();
@@ -40,19 +43,23 @@ public class SenderThread extends Thread {
                     }
 
                     try  {
-                        String header = String.format("%1$-" + HEADER_SIZE + "s", msg.length());
-                        String fullMsg = header + msg;
-
-                        writer.write(fullMsg, 0, fullMsg.length());
-                        writer.flush();
+                        System.out.println("******************************");
+                        System.out.println("sending: " + msg);
+                        byte[] data = preprocessor.preprocessToSend(msg.getBytes());
+                        stream.write(data);
+                        stream.flush();
                     } catch (IOException e) {
                         // this thread shouldn't handle this
+                        e.printStackTrace();
+                        return;
+                    } catch (SecurityException e) {
+                        // TODO
                         e.printStackTrace();
                         return;
                     }
 
                 } catch (InterruptedException e) {
-                    // TODO shouldn't be interrupted tho
+                    // TODO
                     e.printStackTrace();
                     break;
                 }

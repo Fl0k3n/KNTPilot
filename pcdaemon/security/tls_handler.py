@@ -10,14 +10,21 @@ from security.TCPGuard import TCPGuard
 from security.session import Session, SessionState
 from security.session_handler import SessionHandler
 from utils.msg_codes import MsgCode, TLSCode
+from Crypto.Random import get_random_bytes
 
 
 '''
-TCP Communication Packet
+TlS('ish) Packet
   |--------------------------------------------|
-  |  tls_code(8)|    size(16)   | reserved(8)  |
+  |  tls_code(8)|    size(16)   | nonce_len(8) |
   |--------------------------------------------|
-  |                  data                      |
+  {                                            }
+  {             nonce(nonce_len * 8)           }
+  {                                            }
+  |--------------------------------------------|
+  {                                            }
+  {               data(size * 8)               }
+  {                                            }
   |--------------------------------------------|
 '''
 
@@ -28,7 +35,7 @@ class TLSHandler(ConnectionStateObserver):
     """ Considerably simplified TLS-alike class used to establish secure channel with client.
     """
     TCP_HEADER_SIZE = 4
-    TCP_HEADER_FORMAT = ">Bhx"
+    TCP_HEADER_FORMAT = ">BhB"
 
     def __init__(self, certificate_path: Path, msg_handler: MsgHandler,
                  tcp_guard: TCPGuard, session_handler: SessionHandler):
@@ -43,7 +50,7 @@ class TLSHandler(ConnectionStateObserver):
         # TODO taken from authenticator, replace it
         self.connected = False
 
-    def get_tcp_header_size(self) -> int:
+    def get_basic_tls_header_size(self) -> int:
         return self.TCP_HEADER_SIZE
 
     def await_secure_channel(self, session: Session):
@@ -54,20 +61,46 @@ class TLSHandler(ConnectionStateObserver):
                 if not self.connected:
                     raise ConnectionError('TLS awaiting interrupted')
 
-    def _parse_header(self, header: bytes) -> Tuple[int, int]:
-        return unpack(self.TCP_HEADER_FORMAT, header)
+    def _parse_header(self, packet: bytes) -> Tuple[int, int, int]:
+        return unpack(self.TCP_HEADER_FORMAT, packet[:self.TCP_HEADER_SIZE])
 
-    def get_data_size(self, header: bytes) -> int:
+    def _extract_nonce_size(self, packet: bytes) -> int:
+        return self._parse_header(packet)[2]
+
+    def _extract_data_size(self, packet: bytes) -> int:
+        return self._parse_header(packet)[1]
+
+    def _extract_nonce(self, packet: bytes) -> bytes:
+        nonce_size = self._extract_nonce_size(packet)
+        return packet[self.TCP_HEADER_SIZE: self.TCP_HEADER_SIZE + nonce_size]
+
+    def get_total_packet_size(self, header: bytes) -> int:
         print(self._parse_header(header))
-        return self._parse_header(header)[1]
+        code, data_size, nonce_size = self._parse_header(header)
+        print("****************************")
+        print(data_size, nonce_size)
 
-    def handle_tls_message(self, header: bytes, client_socket: socket, data: bytes):
+        packet_length = data_size + nonce_size + self.TCP_HEADER_SIZE
+
+        if TLSCode(code) == TLSCode.SECURE:
+            packet_length += self.tcp_guard.get_tag_length()
+
+        return packet_length
+
+    def handle_tls_message(self, client_socket: socket, packet: bytes):
         session = self.session_handler.get_session(client_socket)
-        code = TLSCode(self._parse_header(header)[0])
-        print('got tls: ', header)
+        print('packet len', len(packet))
+        code = TLSCode(self._parse_header(packet)[0])
+        print('got tls: ', packet[:self.TCP_HEADER_SIZE])
+
+        separator_idx = self.TCP_HEADER_SIZE + self._extract_nonce_size(packet)
+        header, data = packet[:separator_idx], packet[separator_idx:]
 
         if session.is_secure() and code == TLSCode.SECURE:
-            decrypted_data = self.tcp_guard.decrypt_message(session, data)
+            nonce = self._extract_nonce(packet)
+
+            decrypted_data = self.tcp_guard.decrypt_message(
+                session, data, header, nonce)
             code, body = self._decode_tcp_message(decrypted_data)
             self.msg_handler.handle_msg(code, body)
         else:
@@ -78,8 +111,14 @@ class TLSHandler(ConnectionStateObserver):
         session = self.session_handler.get_session(client_tcp_socket)
         assert session.is_secure(), "cant send message via unsecure channel"  # TODO
 
-        header = pack(self.TCP_HEADER_FORMAT, TLSCode.SECURE.value, len(data))
-        return header + self.tcp_guard.encrypt_message(session, header, data)
+        print(len(data))
+
+        nonce_length = self.tcp_guard.get_nonce_length()
+        nonce = self._get_nonce(nonce_length)
+
+        header = pack(self.TCP_HEADER_FORMAT,
+                      TLSCode.SECURE.value, len(data), nonce_length) + nonce
+        return header + self.tcp_guard.encrypt_message(session, data, header, nonce)
 
     def _decode_tcp_message(self, data: bytes) -> Tuple[MsgCode, Any]:
         # TODO move it elsewhere
@@ -102,7 +141,7 @@ class TLSHandler(ConnectionStateObserver):
             cert = f.read()
 
         header = pack(self.TCP_HEADER_FORMAT,
-                      TLSCode.CERTIFICATE.value, len(cert))
+                      TLSCode.CERTIFICATE.value, len(cert), 0)
 
         sock = session.get_tcp_socket()
         sock.send(header + cert)
@@ -126,3 +165,6 @@ class TLSHandler(ConnectionStateObserver):
         with self.security_change_mutex:
             self.connected = False
             self.security_changed.notify_all()
+
+    def _get_nonce(self, len: int):
+        return get_random_bytes(len)

@@ -13,6 +13,7 @@ import android.view.ScaleGestureDetector;
 import com.example.pilot.R;
 import com.example.pilot.networking.MediaReceiver;
 import com.example.pilot.security.CertificateVerifier;
+import com.example.pilot.security.MessageSecurityPreprocessor;
 import com.example.pilot.security.TCPGuard;
 import com.example.pilot.security.TLSHandler;
 import com.example.pilot.ui.events.ImageScaleListener;
@@ -68,11 +69,12 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
             return;
         }
-
         CertificateVerifier certificateVerifier = new CertificateVerifier(CAKeyFile);
         TLSHandler tlsHandler = new TLSHandler(certificateVerifier, tcpGuard);
 
-        networkHandler = new NetworkHandler(preferencesLoader.getIPAddr(), preferencesLoader.getPort(), tlsHandler);
+        MessageSecurityPreprocessor tcpPreprocessor = new MessageSecurityPreprocessor(tlsHandler, tcpGuard);
+
+        networkHandler = new NetworkHandler(preferencesLoader.getIPAddr(), preferencesLoader.getPort(), tlsHandler, tcpPreprocessor);
         messageHandler = new MessageHandler(networkHandler);
         uiHandler = new MainUIHandler(messageHandler, this);
         settingsHandler = new SettingsHandler(this);

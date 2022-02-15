@@ -1,6 +1,5 @@
 package com.example.pilot.security;
 
-import org.json.JSONException;
 
 import java.io.DataInputStream;
 import java.io.File;
@@ -12,7 +11,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.Provider;
 import java.security.PublicKey;
 import java.security.Security;
-import java.security.Signature;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
@@ -20,7 +18,6 @@ import java.util.Base64;
 import java.util.TreeSet;
 
 public class CertificateVerifier {
-    private static final String SIGNATURE_ALGORITHM = "SHA256withRSA";
     private static final String KEY_ALGORITHM = "RSA";
     private static final String SUPPORTED_KEY_ENCODING = "pem";
 
@@ -29,13 +26,13 @@ public class CertificateVerifier {
     public CertificateVerifier(File CAPublicKeyFile) {
         this.CAPublicKeyFile = CAPublicKeyFile;
 
-        TreeSet<String> algorithms = new TreeSet<>();
-        for (Provider provider : Security.getProviders())
-            for (Provider.Service service : provider.getServices())
-                if (service.getType().equals("Signature"))
-                    algorithms.add(service.getAlgorithm());
-        for (String algorithm : algorithms)
-            System.out.println(algorithm);
+//        TreeSet<String> algorithms = new TreeSet<>();
+//        for (Provider provider : Security.getProviders())
+//            for (Provider.Service service : provider.getServices())
+//                if (service.getType().equals("Cipher"))
+//                    algorithms.add(service.getAlgorithm());
+//        for (String algorithm : algorithms)
+//            System.out.println(algorithm);
 
         if (!CAPublicKeyFile.getName().endsWith(SUPPORTED_KEY_ENCODING))
             throw new IllegalArgumentException("Public key format is not supported, expected " +
@@ -46,15 +43,11 @@ public class CertificateVerifier {
         try {
             PublicKey CA_publicKey = loadCAPublicKey();
 
-            Signature verifier = getSignatureVerifier();
-
-            certificate.setupVerifierParams(verifier);
-
-            return certificate.verify(verifier, CA_publicKey);
+            return certificate.verify(CA_publicKey);
         } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException exception) {
             exception.printStackTrace();
             throw new KeyException(exception.getMessage());
-        } catch (SignatureException | JSONException e) {
+        } catch (SignatureException e) {
             e.printStackTrace();
         }
 
@@ -84,7 +77,5 @@ public class CertificateVerifier {
         return keyFactory.generatePublic(keySpec);
     }
 
-    private Signature getSignatureVerifier() throws NoSuchAlgorithmException {
-        return Signature.getInstance(SIGNATURE_ALGORITHM);
-    }
+
 }

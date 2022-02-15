@@ -22,6 +22,7 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 
 public class Certificate {
+    private final String signature_algorithm;
     private final JSONObject jsonCertificate;
     private boolean isVerified;
 
@@ -29,6 +30,9 @@ public class Certificate {
         jsonCertificate = new JSONObject(new String(data, StandardCharsets.UTF_8));
         // TODO assert valid dates
         isVerified = false;
+
+        // TODO get it from certificate data
+        signature_algorithm = "SHA256withRSA";
     }
 
     private byte[] getVerifiable() throws JSONException {
@@ -44,8 +48,9 @@ public class Certificate {
     }
 
 
-    public boolean verify(Signature verifier, PublicKey verifierPublicKey) throws SignatureException, KeyException {
+    public boolean verify(PublicKey verifierPublicKey) throws SignatureException, KeyException {
         try {
+            Signature verifier = getSignatureVerifier();
             verifier.initVerify(verifierPublicKey);
             verifier.update(getVerifiable());
             isVerified = verifier.verify(getSignature());
@@ -53,6 +58,9 @@ public class Certificate {
         } catch (InvalidKeyException | JSONException e) {
             e.printStackTrace();
             throw new KeyException("Failed to use key " + e.getMessage());
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            throw new SignatureException("Failed to verify. " + e.getMessage());
         }
 
     }
@@ -101,18 +109,8 @@ public class Certificate {
         return factory.generatePublic(keySpec);
     }
 
-    public void setupVerifierParams(Signature verifier) throws JSONException {
-//        System.out.println(jsonCertificate.toString());
-//        JSONObject certificateParams = jsonCertificate.getJSONObject("certificate_params");
-
-//        int saltLen = certificateParams.getInt("salt_len_bytes");
-//        System.out.println("salt len: " + saltLen);
-//        String hashAlgorithm = certificateParams.getString("hash_algorithm");
-//        String maskFunction = certificateParams.getString("mask_function");
-//
-        // TODO assert supported params
-
-//        verifier.setParameter(new PSSParameterSpec("SHA-256", "MGF1", MGF1ParameterSpec.SHA256, saltLen, 1));
+    private Signature getSignatureVerifier() throws NoSuchAlgorithmException {
+        return Signature.getInstance(signature_algorithm);
     }
 
 }

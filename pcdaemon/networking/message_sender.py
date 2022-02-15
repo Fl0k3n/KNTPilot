@@ -19,7 +19,6 @@ class MessageSender(ConnectionStateObserver):
             'body': body
         })
 
-        # msg = f'{len(msg_data): <{self.header_size}}{msg_data}'
         msg = self.tls_handler.preprocess_message(
             self.client_socket, msg_data.encode('utf-8'))
 

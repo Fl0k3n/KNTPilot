@@ -1,12 +1,16 @@
 package com.example.pilot.networking;
 import com.example.pilot.networking.observers.ConnectionStatusObserver;
 import com.example.pilot.networking.observers.MessageRcvdObserver;
+import com.example.pilot.security.AuthenticationException;
+import com.example.pilot.security.MessageSecurityPreprocessor;
 import com.example.pilot.security.SecurityException;
+import com.example.pilot.security.TCPGuard;
 import com.example.pilot.security.TLSHandler;
 import com.example.pilot.utils.BlockingQueue;
 
 import java.net.*;
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 
@@ -26,15 +30,17 @@ public class NetworkHandler implements Runnable, Sender {
     private final LinkedList<ConnectionStatusObserver> connectionStatusObservers;
     private BlockingQueue<String> messageQueue;
 
-    private final int HEADER_SIZE = 10; // bytes
+    private final MessageSecurityPreprocessor preprocessor;
+
     private final int CHUNK_SIZE = 8 * 1024; // bytes
 
-    public NetworkHandler(String ipAddr, int port, TLSHandler tlsHandler) {
+    public NetworkHandler(String ipAddr, int port, TLSHandler tlsHandler, MessageSecurityPreprocessor preprocessor) {
         this.port = port;
         this.ipAddr = ipAddr;
         this.tlsHandler = tlsHandler;
         this.msgRcvdObservers = new LinkedList<>();
         this.connectionStatusObservers = new LinkedList<>();
+        this.preprocessor = preprocessor;
     }
 
     public synchronized void setConnectionParams(String ipAddr, int port) {
@@ -52,7 +58,7 @@ public class NetworkHandler implements Runnable, Sender {
         connectionStatusObservers.add(obs);
     }
 
-    private String recv(int size) throws IOException {
+    private byte[] recv(int size) throws IOException {
         int size_read = 0;
         byte[] buff = new byte[size];
 
@@ -63,15 +69,23 @@ public class NetworkHandler implements Runnable, Sender {
             size_read += rd;
         }
 
-        return new String(buff, StandardCharsets.UTF_8);
+        return buff;
     }
 
 
-    private String recvMessage() throws IOException {
-        int length = Integer.parseInt(recv(HEADER_SIZE).trim());
-        String msg = recv(length);
+    private String recvMessage() throws IOException, AuthenticationException, SecurityException {
+        byte[] basicHeader = recv(tlsHandler.getBasicHeaderSize());
+        byte[] msg = recv(tlsHandler.getMessageSize(basicHeader));
+
+        byte[] fullMsg = ByteBuffer.allocate(basicHeader.length + msg.length)
+                .put(basicHeader)
+                .put(msg)
+                .array();
+
+        byte[] preprocessedMsg = preprocessor.preprocessReceived(fullMsg);
+
 //        System.out.println("LENGTH: " + length + " READ: " + msg.length());
-        return msg;
+        return new String(preprocessedMsg, StandardCharsets.UTF_8);
     }
 
     @Override
@@ -95,12 +109,11 @@ public class NetworkHandler implements Runnable, Sender {
                 messageQueue = new BlockingQueue<>();
                 this.socket = socket;
                 this.socketIn = stream;
-                this.sender = new SenderThread(socket, messageQueue, HEADER_SIZE);
+                this.sender = new SenderThread(socket, messageQueue, preprocessor);
 
                 sender.setDaemon(true);
                 sender.start();
                 connectionStatusObservers.forEach(ConnectionStatusObserver::connectionEstablished);
-//            benchmark();
                 listen();
 
             } catch (IOException e) {
@@ -118,6 +131,10 @@ public class NetworkHandler implements Runnable, Sender {
                     }
                     this.socket = null;
                 }
+            } catch (SecurityException | AuthenticationException e) {
+                // TODO
+                System.out.println("SECURITY FAILED " + e.getMessage());
+                e.printStackTrace();
             }
 
             synchronized (this) {
@@ -140,7 +157,7 @@ public class NetworkHandler implements Runnable, Sender {
         }
     }
 
-    private void listen() throws IOException {
+    private void listen() throws IOException, AuthenticationException, SecurityException {
         while (true) {
             String rcvd = recvMessage();
             synchronized (this) {
@@ -149,18 +166,18 @@ public class NetworkHandler implements Runnable, Sender {
         }
     }
 
-    private void benchmark() throws IOException {
-        long start = System.nanoTime();
-        long bm_time = 1_000_000_000; //nano
-        int fps = 0;
-
-        while (System.nanoTime() - start < bm_time) {
-            fps++;
-            recvMessage();
-        }
-
-        System.out.println("FPS: " + fps);
-    }
+//    private void benchmark() throws IOException {
+//        long start = System.nanoTime();
+//        long bm_time = 1_000_000_000; //nano
+//        int fps = 0;
+//
+//        while (System.nanoTime() - start < bm_time) {
+//            fps++;
+//            recvMessage();
+//        }
+//
+//        System.out.println("FPS: " + fps);
+//    }
 
     @Override
     public void enqueueJsonMessageRequest(String jsonData) {
