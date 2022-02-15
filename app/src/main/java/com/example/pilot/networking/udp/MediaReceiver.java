@@ -1,4 +1,4 @@
-package com.example.pilot.networking;
+package com.example.pilot.networking.udp;
 
 import com.example.pilot.networking.observers.ConnectionStatusObserver;
 import com.example.pilot.ui.utils.AudioFrame;
@@ -9,6 +9,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Inet4Address;
 import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
@@ -99,7 +100,7 @@ public class MediaReceiver implements Runnable, ConnectionStatusObserver {
     }
 
     @Override
-    public void connectionEstablished() {
+    public void connectionEstablished(Socket serverSocket) {
         try {
             socket = new DatagramSocket(null);
             socket.setReuseAddress(true);
@@ -115,7 +116,7 @@ public class MediaReceiver implements Runnable, ConnectionStatusObserver {
     }
 
     @Override
-    public void connectionLost() {
+    public void connectionLost(Socket serverSocket) {
         socket.close(); // TODO
     }
 }

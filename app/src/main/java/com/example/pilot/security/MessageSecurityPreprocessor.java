@@ -1,38 +1,57 @@
 package com.example.pilot.security;
 
+import com.example.pilot.security.exceptions.AuthenticationException;
+import com.example.pilot.security.exceptions.SecurityException;
+import com.example.pilot.security.utils.TLSCode;
+import com.example.pilot.security.utils.TLSPacket;
+
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 
 public class MessageSecurityPreprocessor {
-    private final TLSHandler tlsHandler;
     private final Guard guard;
+    private final SecureRandom nonceGenerator;
 
-    public MessageSecurityPreprocessor(TLSHandler tlsHandler, Guard guard) {
-        this.tlsHandler = tlsHandler;
+    public MessageSecurityPreprocessor(Guard guard) {
         this.guard = guard;
+        this.nonceGenerator = new SecureRandom();
     }
 
     public byte[] preprocessToSend(byte[] messageToSend) throws SecurityException {
-        byte[] nonce = tlsHandler.getNonce(guard.getNonceLength());
-        byte[] header = tlsHandler.buildHeader(TLSCode.SECURE, messageToSend.length, nonce);
+        byte[] nonce = getNonce();
+        TLSPacket tlsPacket = new TLSPacket(TLSCode.SECURE, (short) messageToSend.length, nonce.length, nonce, messageToSend);
 
         System.out.println("sending len: " + messageToSend.length);
 
-        byte[] encryptedData = guard.encrypt(messageToSend, header, nonce);
+        byte[] encryptedData = guard.encrypt(tlsPacket.data, tlsPacket.header, nonce);
 
-        return new Message(header, encryptedData).full;
+        return new TLSPacket(tlsPacket.header, encryptedData).full;
     }
 
     public byte[] preprocessReceived(byte[] receivedMessage) throws SecurityException, AuthenticationException {
-        int headerLength = tlsHandler.getTotalHeaderLength(receivedMessage);
-        Message msg = new Message(receivedMessage, headerLength);
+        TLSPacket tlsPacket = new TLSPacket(receivedMessage);
 
-        byte[] nonce = tlsHandler.extractNonceFromHeader(msg.header);
+        byte[] nonce = tlsPacket.nonce;
 
         if (nonce.length != guard.getNonceLength())
             throw new SecurityException("Invalid nonce length, expected " + guard.getNonceLength() +
-                    " got " + nonce.length + "\nFrom: " + new String(msg.full, StandardCharsets.UTF_8));
+                    " got " + nonce.length + "\nFrom: " + new String(tlsPacket.full, StandardCharsets.UTF_8));
 
-        return guard.decrypt(msg.data, msg.header, nonce);
+        return guard.decrypt(tlsPacket.data, tlsPacket.header, nonce);
     }
 
+    private byte[] getNonce() {
+        byte[] nonce = new byte[guard.getNonceLength()];
+        nonceGenerator.nextBytes(nonce);
+        return nonce;
+    }
+
+    public int getBasicHeaderSize() {
+        return TLSPacket.HEADER_SIZE;
+    }
+
+    public int getMessageSize(byte[] basicHeader) {
+        // first HEADER_SIZE bytes
+        return TLSPacket.getMessageSize(basicHeader, guard.getTagLength());
+    }
 }

@@ -7,6 +7,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class AudioStreamHandler {
     // buffer will hold up to (prefetchMs * BUFFER_SIZE_MULTIPLIER) data
+    // TODO make this adaptive
     private static final int BUFFER_SIZE_MULTIPLIER = 4;
     private static final float PREFETCH_TIME_MULTIPLIER = 1.5f;
 
@@ -21,8 +22,8 @@ public class AudioStreamHandler {
 
     private long recvStartedAt;
 
-    private ReentrantLock consumerLock;
-    private Condition consumerCond;
+    private final ReentrantLock consumerLock;
+    private final Condition consumerCond;
     private Thread audioConsumerThread;
 
     public AudioStreamHandler(SoundPlayer soundPlayer, int initialBufferPreFetchMs,

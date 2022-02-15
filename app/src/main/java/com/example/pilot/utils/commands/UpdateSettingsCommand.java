@@ -1,20 +1,18 @@
 package com.example.pilot.utils.commands;
 
-import android.util.Pair;
-
 import com.example.pilot.ui.views.SettingsHandler;
-import com.example.pilot.networking.NetworkHandler;
+import com.example.pilot.networking.tcp.ConnectionHandler;
 import com.example.pilot.utils.PreferencesLoader;
 
 public class UpdateSettingsCommand implements Command {
-    private final NetworkHandler networkHandler;
+    private final ConnectionHandler connectionHandler;
     private final PreferencesLoader preferencesLoader;
     private final SettingsHandler settingsHandler;
 
-    public UpdateSettingsCommand(NetworkHandler handler,
+    public UpdateSettingsCommand(ConnectionHandler handler,
                                  PreferencesLoader preferencesLoader,
                                  SettingsHandler settingsHandler) {
-        this.networkHandler = handler;
+        this.connectionHandler = handler;
         this.preferencesLoader = preferencesLoader;
         this.settingsHandler = settingsHandler;
     }
@@ -35,6 +33,6 @@ public class UpdateSettingsCommand implements Command {
             port = preferencesLoader.getPort();
 
 
-        networkHandler.setConnectionParams(ipAddr, port);
+        connectionHandler.setConnectionParams(ipAddr, port);
     }
 }

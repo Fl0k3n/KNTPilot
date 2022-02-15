@@ -1,47 +1,20 @@
-package com.example.pilot.networking;
+package com.example.pilot.networking.tcp;
 
-import android.util.Pair;
-
-import com.example.pilot.networking.observers.AuthStatusObserver;
-import com.example.pilot.networking.observers.MessageRcvdObserver;
-import com.example.pilot.networking.observers.SsRcvdObserver;
+import com.example.pilot.utils.SpecialKeyCode;
 import com.example.pilot.utils.KeyboardModifier;
-import com.example.pilot.utils.ScreenShot;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.Base64;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 
-public class MessageHandler implements MessageRcvdObserver, AuthSender {
-    private final LinkedList<SsRcvdObserver> ssRcvdObservers;
-    private final LinkedList<AuthStatusObserver> authStatusObservers;
+public class MessageSender implements AuthSender {
     private final Sender sender;
 
-    public MessageHandler(Sender sender) {
+    public MessageSender(Sender sender) {
         this.sender = sender;
-        this.ssRcvdObservers = new LinkedList<>();
-        this.authStatusObservers = new LinkedList<>();
-    }
-
-    public void addSSRcvdObserver(SsRcvdObserver obs) {
-        this.ssRcvdObservers.add(obs);
-    }
-
-    public void addAuthStatusObserver(AuthStatusObserver obs) {
-        this.authStatusObservers.add(obs);
-    }
-
-
-    private Pair<MsgCode, JSONObject> parseMsg(String jsonData) throws JSONException {
-        JSONObject parsed = new JSONObject(jsonData);
-        MsgCode code = MsgCode.fromInteger(parsed.getInt("code"));
-        JSONObject value = parsed.getJSONObject("body");
-        return new Pair<>(code, value);
     }
 
     private String buildStringMsg(MsgCode code, Object value) throws JSONException {
@@ -51,36 +24,6 @@ public class MessageHandler implements MessageRcvdObserver, AuthSender {
         return msg.toString();
     }
 
-    public void msgRcvd(String jsonData) {
-        try {
-            Pair<MsgCode, JSONObject> parsed = parseMsg(jsonData);
-            handleMessage(parsed.first, parsed.second);
-        } catch (JSONException e) {
-            System.out.println("Rcvd unparsable json msg");
-            System.out.println(jsonData);
-            System.out.println(e.getMessage());
-        }
-    }
-
-    private void handleMessage(MsgCode code, JSONObject value) throws JSONException {
-        switch(code) {
-            case SSHOT:
-                byte[] decoded = Base64.getDecoder().decode(value.getString("image"));
-                ScreenShot ss = new ScreenShot(decoded);
-                this.ssRcvdObservers.forEach(obs -> obs.onScreenShotRcvd(ss));
-                break;
-            case AUTH_CHECKED:
-                boolean is_granted = value.getBoolean("is_granted");
-                authStatusObservers.forEach(is_granted ?
-                        AuthStatusObserver::authSucceeded :
-                        AuthStatusObserver::authFailed);
-
-                break;
-            default:
-                throw new RuntimeException("Rcvd unsupported msg code " + code); // TODO
-        }
-
-    }
 
     public void sendSwipeMessage(float real_dx, float real_dy) {
         int dx = (int)real_dx, dy = (int)real_dy;

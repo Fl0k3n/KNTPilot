@@ -8,7 +8,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.pilot.R;
-import com.example.pilot.networking.AuthSender;
+import com.example.pilot.networking.tcp.AuthSender;
 import com.example.pilot.networking.observers.AuthStatusObserver;
 
 public class AuthHandler implements AuthStatusObserver {

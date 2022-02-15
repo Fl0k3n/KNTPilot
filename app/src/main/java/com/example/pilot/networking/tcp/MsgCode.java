@@ -1,4 +1,4 @@
-package com.example.pilot.networking;
+package com.example.pilot.networking.tcp;
 
 // keep consistent with pcdaemon/msg_codes.py codes,
 // see that file for code reference

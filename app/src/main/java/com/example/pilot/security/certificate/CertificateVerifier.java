@@ -1,5 +1,7 @@
-package com.example.pilot.security;
+package com.example.pilot.security.certificate;
 
+
+import com.example.pilot.security.exceptions.KeyException;
 
 import java.io.DataInputStream;
 import java.io.File;
@@ -8,14 +10,11 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
-import java.security.Provider;
 import java.security.PublicKey;
-import java.security.Security;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
-import java.util.TreeSet;
 
 public class CertificateVerifier {
     private static final String KEY_ALGORITHM = "RSA";
@@ -25,14 +24,6 @@ public class CertificateVerifier {
 
     public CertificateVerifier(File CAPublicKeyFile) {
         this.CAPublicKeyFile = CAPublicKeyFile;
-
-//        TreeSet<String> algorithms = new TreeSet<>();
-//        for (Provider provider : Security.getProviders())
-//            for (Provider.Service service : provider.getServices())
-//                if (service.getType().equals("Cipher"))
-//                    algorithms.add(service.getAlgorithm());
-//        for (String algorithm : algorithms)
-//            System.out.println(algorithm);
 
         if (!CAPublicKeyFile.getName().endsWith(SUPPORTED_KEY_ENCODING))
             throw new IllegalArgumentException("Public key format is not supported, expected " +
@@ -62,19 +53,22 @@ public class CertificateVerifier {
             dataStream.readFully(pubKeyFileData);
         }
 
-        String utf8Key = new String(pubKeyFileData, StandardCharsets.US_ASCII);
-        utf8Key = utf8Key.replace("-----BEGIN PUBLIC KEY-----", "");
-        utf8Key = utf8Key.replace("-----END PUBLIC KEY-----", "");
-        utf8Key = utf8Key.replace("\n", "");
-
-
-        byte[] decodedKey = Base64.getDecoder().decode(utf8Key);
+        byte[] decodedKey = decodePublicKey(pubKeyFileData);
 
         X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decodedKey);
 
         KeyFactory keyFactory = KeyFactory.getInstance(KEY_ALGORITHM);
 
         return keyFactory.generatePublic(keySpec);
+    }
+
+    private byte[] decodePublicKey(byte[] encodedKey) {
+        String utf8Key = new String(encodedKey, StandardCharsets.US_ASCII);
+        utf8Key = utf8Key.replace("-----BEGIN PUBLIC KEY-----", "");
+        utf8Key = utf8Key.replace("-----END PUBLIC KEY-----", "");
+        utf8Key = utf8Key.replace("\n", "");
+
+        return Base64.getDecoder().decode(utf8Key);
     }
 
 

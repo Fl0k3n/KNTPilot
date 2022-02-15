@@ -4,15 +4,17 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.util.Pair;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 
 import com.example.pilot.R;
-import com.example.pilot.networking.MediaReceiver;
-import com.example.pilot.security.CertificateVerifier;
+import com.example.pilot.networking.tcp.Listener;
+import com.example.pilot.networking.udp.MediaReceiver;
+import com.example.pilot.networking.tcp.MessageReceiver;
+import com.example.pilot.networking.tcp.Sender;
+import com.example.pilot.security.certificate.CertificateVerifier;
 import com.example.pilot.security.MessageSecurityPreprocessor;
 import com.example.pilot.security.TCPGuard;
 import com.example.pilot.security.TLSHandler;
@@ -23,16 +25,15 @@ import com.example.pilot.ui.utils.SoundPlayer;
 import com.example.pilot.ui.views.MainUIHandler;
 import com.example.pilot.ui.views.SettingsHandler;
 import com.example.pilot.utils.KeyboardModifier;
-import com.example.pilot.networking.MessageHandler;
-import com.example.pilot.networking.NetworkHandler;
-import com.example.pilot.networking.SpecialKeyCode;
+import com.example.pilot.networking.tcp.MessageSender;
+import com.example.pilot.networking.tcp.ConnectionHandler;
+import com.example.pilot.utils.SpecialKeyCode;
 import com.example.pilot.utils.commands.ChangeSettingsVisibilityCommand;
 import com.example.pilot.utils.PreferencesLoader;
 import com.example.pilot.utils.commands.UpdateSettingsCommand;
 
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
@@ -40,14 +41,17 @@ import java.security.NoSuchAlgorithmException;
 
 public class MainActivity extends AppCompatActivity {
     private MainUIHandler uiHandler;
-    private NetworkHandler networkHandler;
-    private MessageHandler messageHandler;
+    private ConnectionHandler connectionHandler;
+    private MessageSender messageSender;
     private ScaleGestureDetector detector;
     private SoundPlayer soundPlayer;
     private PreferencesLoader preferencesLoader;
     private SettingsHandler settingsHandler;
     private AudioStreamHandler audioStreamHandler;
     private MediaReceiver mediaReceiver;
+    private MessageReceiver messageReceiver;
+    private Sender sender;
+    private Listener listener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,12 +76,16 @@ public class MainActivity extends AppCompatActivity {
         CertificateVerifier certificateVerifier = new CertificateVerifier(CAKeyFile);
         TLSHandler tlsHandler = new TLSHandler(certificateVerifier, tcpGuard);
 
-        MessageSecurityPreprocessor tcpPreprocessor = new MessageSecurityPreprocessor(tlsHandler, tcpGuard);
+        MessageSecurityPreprocessor tcpPreprocessor = new MessageSecurityPreprocessor(tcpGuard);
 
-        networkHandler = new NetworkHandler(preferencesLoader.getIPAddr(), preferencesLoader.getPort(), tlsHandler, tcpPreprocessor);
-        messageHandler = new MessageHandler(networkHandler);
-        uiHandler = new MainUIHandler(messageHandler, this);
+        messageReceiver = new MessageReceiver();
+        sender = new Sender(tcpPreprocessor);
+        listener = new Listener(tcpPreprocessor);
+        connectionHandler = new ConnectionHandler(preferencesLoader.getIPAddr(), preferencesLoader.getPort(), tlsHandler, listener);
+        messageSender = new MessageSender(sender);
+        uiHandler = new MainUIHandler(messageSender, this);
         settingsHandler = new SettingsHandler(this);
+
 
         soundPlayer = new SoundPlayer();
 
@@ -86,22 +94,23 @@ public class MainActivity extends AppCompatActivity {
 
         mediaReceiver = new MediaReceiver(preferencesLoader.getPort(), audioStreamHandler);
 
-        messageHandler.addAuthStatusObserver(uiHandler);
-        messageHandler.addSSRcvdObserver(uiHandler);
+        messageReceiver.addAuthStatusObserver(uiHandler);
+        messageReceiver.addSSRcvdObserver(uiHandler);
 
-        networkHandler.addMsgRcvdObserver(messageHandler);
+        connectionHandler.addConnectionStatusObserver(mediaReceiver);
+        connectionHandler.addConnectionStatusObserver(uiHandler);
+        connectionHandler.addConnectionStatusObserver(soundPlayer);
+        connectionHandler.addConnectionStatusObserver(sender);
 
-        networkHandler.addConnectionStatusObserver(mediaReceiver);
-        networkHandler.addConnectionStatusObserver(uiHandler);
-        networkHandler.addConnectionStatusObserver(soundPlayer);
+        listener.addMsgRcvdObserver(messageReceiver);
 
         initScaleDetector();
 
-        Thread network = new Thread(networkHandler);
+        Thread network = new Thread(connectionHandler);
         network.start();
 
         FPSCounter fpsCounter = new FPSCounter(uiHandler);
-        messageHandler.addSSRcvdObserver(fpsCounter);
+        messageReceiver.addSSRcvdObserver(fpsCounter);
 
         Thread timer = new Thread(fpsCounter);
         timer.start();
@@ -123,27 +132,27 @@ public class MainActivity extends AppCompatActivity {
 
 
         menu.findItem(R.id.monitorBtn).setOnMenuItemClickListener(e -> {
-            messageHandler.changeMonitor();
+            messageSender.changeMonitor();
             return true;
         });
 
         menu.findItem(R.id.WinBtn).setOnMenuItemClickListener(e -> {
-           messageHandler.sendKeyboardInput('\0', SpecialKeyCode.WINDOWS_KEY, null);
+           messageSender.sendKeyboardInput('\0', SpecialKeyCode.WINDOWS_KEY, null);
            return true;
         });
 
         menu.findItem(R.id.upBtn).setOnMenuItemClickListener(e -> {
-            messageHandler.sendScrollMessage(true);
+            messageSender.sendScrollMessage(true);
             return true;
         });
 
         menu.findItem(R.id.downBtn).setOnMenuItemClickListener(e -> {
-            messageHandler.sendScrollMessage(false);
+            messageSender.sendScrollMessage(false);
             return true;
         });
 
         menu.findItem(R.id.backspaceBtn).setOnMenuItemClickListener(e -> {
-            messageHandler.sendKeyboardInput('\0', SpecialKeyCode.BACKSPACE, null);
+            messageSender.sendKeyboardInput('\0', SpecialKeyCode.BACKSPACE, null);
            return true;
         });
 
@@ -152,7 +161,7 @@ public class MainActivity extends AppCompatActivity {
             audioStreamHandler.restart(); // TODO
             soundPlayer.setMuted(!isMuted);
             uiHandler.changeMuteIcon(!isMuted);
-            messageHandler.sendMuteMessage(!isMuted);
+            messageSender.sendMuteMessage(!isMuted);
             return true;
         });
 
@@ -182,7 +191,7 @@ public class MainActivity extends AppCompatActivity {
         ChangeSettingsVisibilityCommand showCmd =
                 new ChangeSettingsVisibilityCommand(this, settingsBtn, false);
         UpdateSettingsCommand updateCmd =
-                new UpdateSettingsCommand(networkHandler, preferencesLoader, settingsHandler);
+                new UpdateSettingsCommand(connectionHandler, preferencesLoader, settingsHandler);
 
         settingsHandler.setOnCloseSettingsCommand(closeCmd);
         settingsHandler.setOnSaveSettingsCommand(() -> {
@@ -213,7 +222,7 @@ public class MainActivity extends AppCompatActivity {
         ImageScaleListener listener = new ImageScaleListener() {
             @Override
             public void scaled(float ratio) {
-                messageHandler.rescaleImage(ratio);
+                messageSender.rescaleImage(ratio);
             }
         };
 

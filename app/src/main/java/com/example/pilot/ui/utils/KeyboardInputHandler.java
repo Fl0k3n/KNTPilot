@@ -1,6 +1,6 @@
 package com.example.pilot.ui.utils;
 import com.example.pilot.utils.KeyboardModifier;
-import com.example.pilot.networking.SpecialKeyCode;
+import com.example.pilot.utils.SpecialKeyCode;
 
 import java.util.List;
 

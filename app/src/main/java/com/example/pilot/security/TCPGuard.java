@@ -1,5 +1,8 @@
 package com.example.pilot.security;
 
+import com.example.pilot.security.exceptions.AuthenticationException;
+import com.example.pilot.security.exceptions.SecurityException;
+
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
@@ -28,7 +31,6 @@ public class TCPGuard implements Guard{
     public TCPGuard() throws NoSuchAlgorithmException {
         this.sessionKey = generateKey();
     }
-
 
     private SecretKey generateKey() throws NoSuchAlgorithmException {
         KeyGenerator keyGenerator = KeyGenerator.getInstance(KEY_ALGORITHM);
@@ -86,57 +88,6 @@ public class TCPGuard implements Guard{
         } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidAlgorithmParameterException | InvalidKeyException e) {
             e.printStackTrace();
             throw new SecurityException("Failed to initialise cipher " + e.getMessage());
-        }
-    }
-
-    private void testIt() {
-
-        //decryption
-        try {
-            byte[] nonce = "123456789012".getBytes();
-            byte[] header = "len=12".getBytes();
-            byte[] key = "12345678901234561234567890123456".getBytes();
-            byte[] encrypted = Base64.getDecoder().decode("BlTN8A==");
-            byte[] tag = Base64.getDecoder().decode("W+Pol0NjuhbDoQKvMzDiFQ==");
-
-            Cipher cipher = Cipher.getInstance(SYMMETRIC_ALGORITHM);
-            SecretKeySpec keySpec = new SecretKeySpec(key, KEY_ALGORITHM);
-            GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(MAC_LENGTH * 8, nonce);
-            cipher.init(Cipher.DECRYPT_MODE, keySpec, gcmParameterSpec);
-            cipher.updateAAD(header);
-            byte[] msg = new byte[encrypted.length + tag.length];
-            System.arraycopy(encrypted, 0, msg, 0, encrypted.length);
-            System.arraycopy(tag, 0, msg, encrypted.length, tag.length);
-
-            byte[] data = cipher.doFinal(msg);
-            System.out.println("decrypted: "  + new String(data, StandardCharsets.UTF_8));
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("Failed: " + e.getMessage());
-        }
-    }
-
-    private void testIt2() {
-
-        //encryption
-        try {
-            byte[] nonce = "123456789012".getBytes();
-            byte[] header = "len=12".getBytes();
-            byte[] key = "12345678901234561234567890123456".getBytes();
-            byte[] data = "kntp2".getBytes();
-
-            Cipher cipher = Cipher.getInstance(SYMMETRIC_ALGORITHM);
-            SecretKeySpec keySpec = new SecretKeySpec(key, KEY_ALGORITHM);
-            GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(MAC_LENGTH * 8, nonce);
-            cipher.init(Cipher.ENCRYPT_MODE, keySpec, gcmParameterSpec);
-            cipher.updateAAD(header);
-
-            byte[] ciphertext_tag = cipher.doFinal(data);
-            System.out.println("ENRYPTED:");
-            System.out.println(new String(Base64.getEncoder().encode(ciphertext_tag), StandardCharsets.UTF_8));
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("Failed: " + e.getMessage());
         }
     }
 }

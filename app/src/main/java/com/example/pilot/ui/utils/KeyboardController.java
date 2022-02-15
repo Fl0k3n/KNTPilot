@@ -5,7 +5,7 @@ import android.text.TextWatcher;
 import android.widget.EditText;
 
 import com.example.pilot.utils.KeyboardModifier;
-import com.example.pilot.networking.SpecialKeyCode;
+import com.example.pilot.utils.SpecialKeyCode;
 
 import java.util.Arrays;
 import java.util.HashMap;

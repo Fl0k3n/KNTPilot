@@ -22,13 +22,14 @@ import com.example.pilot.ui.utils.KeyboardController;
 import com.example.pilot.ui.utils.UIMsgCode;
 import com.example.pilot.ui.utils.KeyboardInputHandler;
 import com.example.pilot.utils.KeyboardModifier;
-import com.example.pilot.networking.MessageHandler;
-import com.example.pilot.networking.SpecialKeyCode;
+import com.example.pilot.networking.tcp.MessageSender;
+import com.example.pilot.utils.SpecialKeyCode;
 import com.example.pilot.networking.observers.SsRcvdObserver;
 import com.example.pilot.networking.observers.AuthStatusObserver;
 import com.example.pilot.networking.observers.ConnectionStatusObserver;
 import com.example.pilot.utils.ScreenShot;
 
+import java.net.Socket;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -38,7 +39,7 @@ public class MainUIHandler extends Handler implements
         SsRcvdObserver, ConnectionStatusObserver,
         AuthStatusObserver, FpsUpdater, KeyboardInputHandler {
     private ImageViewer iv;
-    private final MessageHandler  messageHandler;
+    private final MessageSender messageSender;
     private final AppCompatActivity activity;
     private final AuthHandler authHandler;
     private Menu menu;
@@ -47,13 +48,13 @@ public class MainUIHandler extends Handler implements
     private final HashMap<KeyboardModifier, MenuItem> menuViews;
     private final HashMap<KeyboardModifier, String> constantNames;
 
-    public MainUIHandler(MessageHandler messageHandler, AppCompatActivity activity) {
-        this.messageHandler = messageHandler;
+    public MainUIHandler(MessageSender messageSender, AppCompatActivity activity) {
+        this.messageSender = messageSender;
         this.activity = activity;
         this.menuViews = new HashMap<>();
         this.constantNames = new HashMap<>();
 
-        authHandler = new AuthHandler(activity, messageHandler);
+        authHandler = new AuthHandler(activity, messageSender);
 
         EditText textInput = activity.findViewById(R.id.keyboardInput);
         keyboardController = new KeyboardController(this, textInput);
@@ -99,12 +100,12 @@ public class MainUIHandler extends Handler implements
         iv = new ImageViewer(activity, imageView) {
             @Override
             public void onSwipe(float real_dx, float real_dy) {
-                messageHandler.sendSwipeMessage(real_dx, real_dy);
+                messageSender.sendSwipeMessage(real_dx, real_dy);
             }
 
             @Override
             public void onClick(float x, float y) {
-                messageHandler.sendClickMessage(x, y);
+                messageSender.sendClickMessage(x, y);
             }
         };
     }
@@ -160,7 +161,7 @@ public class MainUIHandler extends Handler implements
     @Override
     public void onScreenShotRcvd(ScreenShot ss) {
         sendThreadMessage(UIMsgCode.UPDATE_IMAGE, ss);
-        this.messageHandler.sendSSRcvdMessage();
+        this.messageSender.sendSSRcvdMessage();
     }
 
 
@@ -170,12 +171,12 @@ public class MainUIHandler extends Handler implements
     }
 
     @Override
-    public void connectionEstablished() {
+    public void connectionEstablished(Socket socket) {
         sendThreadMessage(UIMsgCode.CONNECTION_ESTB, null);
     }
 
     @Override
-    public void connectionLost() {
+    public void connectionLost(Socket socket) {
         sendThreadMessage(UIMsgCode.CONNECTION_LOST, null);
     }
 
@@ -241,7 +242,7 @@ public class MainUIHandler extends Handler implements
 
     @Override
     public void onKeyPressed(char key, SpecialKeyCode code, List<KeyboardModifier> modifiers) {
-        messageHandler.sendKeyboardInput(key, code, modifiers);
+        messageSender.sendKeyboardInput(key, code, modifiers);
     }
 
     public void changeKeyboardModifier(KeyboardModifier modifier) {

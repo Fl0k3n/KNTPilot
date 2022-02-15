@@ -7,6 +7,7 @@ import android.media.AudioTrack;
 
 import com.example.pilot.networking.observers.ConnectionStatusObserver;
 
+import java.net.Socket;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -81,12 +82,12 @@ public class SoundPlayer implements ConnectionStatusObserver, Runnable {
     }
 
     @Override
-    public void connectionEstablished() {
+    public void connectionEstablished(Socket socket) {
         //pass
     }
 
     @Override
-    public void connectionLost() {
+    public void connectionLost(Socket socket) {
         setMuted(true);
     }
 }

@@ -1,4 +1,7 @@
-package com.example.pilot.security;
+package com.example.pilot.security.certificate;
+
+import com.example.pilot.security.exceptions.KeyException;
+import com.example.pilot.security.exceptions.SecurityException;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -38,7 +41,6 @@ public class Certificate {
     private byte[] getVerifiable() throws JSONException {
         JSONObject copy = new JSONObject(jsonCertificate.toString());
         copy.remove("signature");
-        System.out.println(copy);
         return Base64.getEncoder().encode(copy.toString().getBytes(StandardCharsets.UTF_8));
     }
 

@@ -1,4 +1,4 @@
-package com.example.pilot.networking;
+package com.example.pilot.utils;
 
 public enum SpecialKeyCode {
     NONE,

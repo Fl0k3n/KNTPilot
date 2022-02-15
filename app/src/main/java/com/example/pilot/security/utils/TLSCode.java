@@ -1,6 +1,4 @@
-package com.example.pilot.security;
-
-import com.example.pilot.networking.MsgCode;
+package com.example.pilot.security.utils;
 
 public enum TLSCode {
     HELLO,

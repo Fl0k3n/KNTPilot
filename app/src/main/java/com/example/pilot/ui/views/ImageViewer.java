@@ -8,7 +8,7 @@ import com.example.pilot.ui.events.ImageSwipeListener;
 import com.example.pilot.utils.ScreenShot;
 
 public abstract class ImageViewer {
-    private ImageView view;
+    private final ImageView view;
     private Integer real_img_w, real_img_h;
 
     public ImageViewer(Context ctx, ImageView imageView) {

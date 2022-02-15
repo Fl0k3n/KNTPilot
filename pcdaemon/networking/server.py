@@ -73,6 +73,7 @@ class Server(Sender, AuthStateObserver):
             self.session_handler.get_session(self.client))
         print("ok secure channel estb")
         self.auth.await_authentication(self.client)
+        print("OK auth estb")
         self.msg_handler.add_conn_state_obs(self.streamer)
         self.streamer.stream()
 
