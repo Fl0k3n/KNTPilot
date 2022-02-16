@@ -64,6 +64,9 @@ public class MainUIHandler extends Handler implements
         initImageViewer(imageView);
     }
 
+    public ImageViewer getImageViewer() {
+        return iv;
+    }
 
     public void setMenu(Menu menu) {
         this.menu = menu;

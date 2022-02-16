@@ -96,6 +96,9 @@ class Server(Sender, AuthStateObserver):
     def send_audio_bytes(self, audio_frame: bytes):
         self.media_handler.send_audio_bytes(audio_frame)
 
+    def send_ss_bytes(self, ss: bytes):
+        self.media_handler.send_video_bytes(ss)
+
     def auth_suceeded(self, session: Session):
         self.sender.send_json(MsgCode.AUTH_CHECKED, {'is_granted': True})
 

@@ -34,3 +34,6 @@ class MediaHandler(ConnectionStateObserver):
 
     def send_audio_bytes(self, audio_frame: bytes):
         self.data_sender.send_audio_frame(audio_frame)
+
+    def send_video_bytes(self, video_frame: bytes):
+        self.data_sender.send_video_frame(video_frame)

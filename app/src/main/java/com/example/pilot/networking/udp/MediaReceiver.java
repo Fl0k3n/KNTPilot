@@ -1,7 +1,7 @@
 package com.example.pilot.networking.udp;
 
 import com.example.pilot.networking.observers.ConnectionStatusObserver;
-import com.example.pilot.ui.utils.MediaStreamHandler;
+import com.example.pilot.networking.tcp.MsgCode;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -10,8 +10,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.Optional;
+import java.util.Arrays;
 
 public class MediaReceiver implements Runnable, ConnectionStatusObserver {
     private final static String IP_ADDR = "0.0.0.0";
@@ -20,8 +19,8 @@ public class MediaReceiver implements Runnable, ConnectionStatusObserver {
     private final static int MAX_DATAGRAM_SIZE = 1500;
     private DatagramSocket socket;
 
-    private final ArrayList<MediaStreamHandler> mediaStreamHandlers;
-    private final ArrayList<FragmentAssembler> fragmentAssemblers;
+    private final MediaStreamHandler[] mediaStreamHandlers;
+    private final FragmentAssembler[] fragmentAssemblers;
 
     private Thread rcvrThread;
 
@@ -31,29 +30,38 @@ public class MediaReceiver implements Runnable, ConnectionStatusObserver {
 
         int expectedStreamCount = MediaCode.values().length;
 
-        mediaStreamHandlers = new ArrayList<>(expectedStreamCount);
-        fragmentAssemblers = new ArrayList<>(expectedStreamCount);
+        int arraySize = getArraySize();
+
+        mediaStreamHandlers = new MediaStreamHandler[arraySize];
+        fragmentAssemblers  = new FragmentAssembler[arraySize];
+
+    }
+
+
+    private int getArraySize() {
+        MsgCode[] codes = MsgCode.values();
+        return codes[codes.length - 1].ordinal() + 1;
     }
 
     public void addMediaStreamHandler(MediaStreamHandler mediaStreamHandler, boolean requiresFragmentation) {
         int arrayIdx = mediaStreamHandler.getMediaType().ordinal();
-        mediaStreamHandlers.add(arrayIdx, mediaStreamHandler);
+        mediaStreamHandlers[arrayIdx] = mediaStreamHandler;
 
         FragmentAssembler fragmentAssembler = new FragmentAssembler(requiresFragmentation);
 
         if (requiresFragmentation)
             mediaStreamHandler.addStreamSkippedObserver(fragmentAssembler);
 
-        fragmentAssemblers.add(arrayIdx, fragmentAssembler);
+        fragmentAssemblers[arrayIdx] = fragmentAssembler;
     }
 
 
     private FragmentAssembler getFragmentAssembler(MediaCode code) {
-        return fragmentAssemblers.get(code.ordinal());
+        return fragmentAssemblers[code.ordinal()];
     }
 
     private MediaStreamHandler getStreamHandler(MediaCode code) {
-        return mediaStreamHandlers.get(code.ordinal());
+        return mediaStreamHandlers[code.ordinal()];
     }
 
 

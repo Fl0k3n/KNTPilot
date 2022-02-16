@@ -43,6 +43,12 @@ public class FragmentAssembler implements StreamSkippedObserver {
         else {
             MediaFrame newFrame = buildMediaFrame(datagramPacket);
             fragmentBuffer.put(newFrame);
+
+            // needed to keep counters valid, probably will never be ready tho
+            if (newFrame.isFullyRecvd()) {
+                fragmentBuffer.removeFullyReceived(newFrame);
+                return Optional.of(newFrame);
+            }
         }
 
         return Optional.empty();

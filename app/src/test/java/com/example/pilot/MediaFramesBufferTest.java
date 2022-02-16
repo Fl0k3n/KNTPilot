@@ -1,6 +1,8 @@
 package com.example.pilot;
 
-import com.example.pilot.ui.utils.MediaFramesBuffer;
+import com.example.pilot.networking.udp.MediaFrame;
+import com.example.pilot.networking.udp.MediaFramesBuffer;
+import com.example.pilot.ui.utils.OverrunException;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -10,22 +12,31 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class MediaFramesBufferTest {
-    private static MediaFrame mf(long seq) {
+    private static MediaFrame mf(int seq) {
         MediaFrame mediaFrame = Mockito.mock(MediaFrame.class);
         Mockito.when(mediaFrame.getSeqNum()).thenReturn(seq);
         return mediaFrame;
     }
 
 
+    private void insertFrames(List<MediaFrame> frames,  MediaFramesBuffer buffer) {
+        for (MediaFrame mediaFrame: frames) {
+            try {
+                buffer.put(mediaFrame);
+            } catch (OverrunException e) {
+                Assert.fail("Insertion failed");
+            }
+        }
+    }
 
     @Test
     public void framesCanBeAddedInOrder() {
         // given
-        MediaFramesBuffer<MediaFrame> buffer = new MediaFramesBuffer<>(4);
+        MediaFramesBuffer buffer = new MediaFramesBuffer(4);
         List<MediaFrame> mediaFrames = getMockList(3);
 
         // when
-        mediaFrames.forEach(buffer::put);
+        insertFrames(mediaFrames, buffer);
 
         // then
         Assert.assertEquals(mediaFrames.size(), buffer.getFilledSize());
@@ -36,11 +47,11 @@ public class MediaFramesBufferTest {
     @Test
     public void framesCanBeReceivedInOrder() {
         // given
-        MediaFramesBuffer<MediaFrame> buffer = new MediaFramesBuffer<>(4);
+        MediaFramesBuffer buffer = new MediaFramesBuffer(4);
         List<MediaFrame> mediaFrames = getMockList(3);
 
         // when
-        mediaFrames.forEach(buffer::put);
+        insertFrames(mediaFrames, buffer);
 
         // then
         mediaFrames.forEach(frame -> {
@@ -54,13 +65,17 @@ public class MediaFramesBufferTest {
     @Test
     public void outOfOrderGapCanBeFilled() {
         // given
-        MediaFramesBuffer<MediaFrame> buffer = new MediaFramesBuffer<>(4);
+        MediaFramesBuffer buffer = new MediaFramesBuffer(4);
         List<MediaFrame> mediaFrames = getMockList(3);
 
         // when
-        buffer.put(mediaFrames.get(0));
-        buffer.put(mediaFrames.get(2));
-        buffer.put(mediaFrames.get(1));
+        try {
+            buffer.put(mediaFrames.get(0));
+            buffer.put(mediaFrames.get(2));
+            buffer.put(mediaFrames.get(1));
+        } catch (OverrunException e) {
+            Assert.fail();
+        }
 
         // then
         Assert.assertEquals(mediaFrames.size(), buffer.getConsecutiveFilledSize());
@@ -74,13 +89,17 @@ public class MediaFramesBufferTest {
     @Test
     public void gapDoesntCountAsConsecutiveFrames() {
         // given
-        MediaFramesBuffer<MediaFrame> buffer = new MediaFramesBuffer<>(6);
+        MediaFramesBuffer buffer = new MediaFramesBuffer(6);
         List<MediaFrame> mediaFrames = getMockList(4);
 
         // when
-        buffer.put(mediaFrames.get(0));
-        buffer.put(mediaFrames.get(2));
-        buffer.put(mediaFrames.get(3));
+        try {
+            buffer.put(mediaFrames.get(0));
+            buffer.put(mediaFrames.get(2));
+            buffer.put(mediaFrames.get(3));
+        } catch (OverrunException e) {
+            Assert.fail();
+        }
 
         // then
         Assert.assertEquals(1, buffer.getConsecutiveFilledSize());
@@ -91,13 +110,17 @@ public class MediaFramesBufferTest {
     @Test
     public void gapCanBeSkipped() {
         // given
-        MediaFramesBuffer<MediaFrame> buffer = new MediaFramesBuffer<>(6);
+        MediaFramesBuffer buffer = new MediaFramesBuffer(6);
         List<MediaFrame> mediaFrames = getMockList(4);
 
         // when
-        buffer.put(mediaFrames.get(0));
-        buffer.put(mediaFrames.get(2));
-        buffer.put(mediaFrames.get(3));
+        try {
+            buffer.put(mediaFrames.get(0));
+            buffer.put(mediaFrames.get(2));
+            buffer.put(mediaFrames.get(3));
+        } catch (OverrunException e) {
+            Assert.fail();
+        }
 
         buffer.skipMissingGap();
         // then

@@ -19,10 +19,12 @@ public class FragmentBuffer {
     private Node head;
     private Node tail;
     private int lastFullyRcvdInOrderSeq;
+    private int size;
 
     public FragmentBuffer() {
         this.head = this.tail = null;
         this.lastFullyRcvdInOrderSeq = -1;
+        this.size = 0;
     }
 
     // not wrapped in optional for performance reasons, will return null if this seqNum is not present
@@ -30,18 +32,16 @@ public class FragmentBuffer {
         if (head == null || seqNum < head.getSeqNum() || seqNum > tail.getSeqNum())
             return null;
 
-        // with high probability it will be tail so explicit check should be worth
-        if (tail.getSeqNum() == seqNum)
-            return tail.value;
+        // with high probability it will be head so explicit check should be worth
+        if (head.getSeqNum() == seqNum)
+            return head.value;
 
         Node tmp = head;
-        while (tmp != tail && seqNum < tmp.getSeqNum()) {
-            if (tmp.getSeqNum() == seqNum)
-                return tmp.value;
+        while (tmp != tail && seqNum >= tmp.next.getSeqNum()) {
             tmp = tmp.next;
         }
 
-        return null;
+        return tmp.getSeqNum() == seqNum ? tmp.value : null;
     }
 
     // mediaFrame with that seq can't be present
@@ -52,6 +52,7 @@ public class FragmentBuffer {
             return;
 
         Node node = new Node(mediaFrame, null);
+        this.size++;
 
         if (head == null) {
             head = tail = node;
@@ -77,8 +78,8 @@ public class FragmentBuffer {
 
     public void removeFullyReceived(MediaFrame mediaFrame) {
         int seqNum = mediaFrame.getSeqNum();
+        this.size--;
 
-        // compare only reference
         if (seqNum == head.value.getSeqNum()) {
             lastFullyRcvdInOrderSeq = mediaFrame.getSeqNum();
             head = head.next;
@@ -91,6 +92,8 @@ public class FragmentBuffer {
             while(tmp != tail) {
                 if (tmp.value.getSeqNum() == seqNum)
                     break;
+                prev = tmp;
+                tmp = tmp.next;
             }
 
             if (tmp == tail) {
@@ -114,12 +117,18 @@ public class FragmentBuffer {
 
         if (seqNum > tail.getSeqNum()) {
             head = tail = null;
+            this.size = 0;
         }
         else {
             while (head != null && head.getSeqNum() < seqNum) {
                 head = head.next;
+                this.size--;
             }
         }
+    }
+
+    public int getSize() {
+        return size;
     }
 
 }

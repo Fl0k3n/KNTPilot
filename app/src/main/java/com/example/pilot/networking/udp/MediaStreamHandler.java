@@ -1,13 +1,9 @@
-package com.example.pilot.ui.utils;
+package com.example.pilot.networking.udp;
 
 
-import com.example.pilot.networking.udp.FragmentAssembler;
-import com.example.pilot.networking.udp.FragmentBuffer;
-import com.example.pilot.networking.udp.MediaCode;
-import com.example.pilot.networking.udp.MediaFrame;
-import com.example.pilot.networking.udp.StreamSkippedObserver;
+import com.example.pilot.ui.utils.MediaPlayer;
+import com.example.pilot.ui.utils.OverrunException;
 
-import java.net.DatagramPacket;
 import java.util.LinkedList;
 import java.util.Optional;
 import java.util.concurrent.locks.Condition;
@@ -45,6 +41,8 @@ public class MediaStreamHandler {
 
         prefetchFrameAmount = computePrefetchSize();
 
+        restart();
+
         initMediaConsumerThread();
     }
 
@@ -79,13 +77,13 @@ public class MediaStreamHandler {
                 buffer.put(mediaFrame);
                 break;
             } catch (OverrunException overrunException) {
-                System.out.println(overrunException.getMessage());
+                System.out.println("[" + getMediaType() + "] " + overrunException.getMessage());
                 handleOverrun();
             }
         }
 
         if (prefetchMode && shouldFinishPrefetch()) {
-            System.out.println("Starting to play");
+            System.out.println("[" + getMediaType() + "] " + "Starting to play");
 
             try {
                 consumerLock.lock();
@@ -137,10 +135,10 @@ public class MediaStreamHandler {
                         mediaPlayer.enqueueMediaFrame(mediaFrame.get());
                     }
                     else {
-                        System.out.println("BUFFER UNDERRUN");
+                        System.out.println("[" + getMediaType() + "] " +"BUFFER UNDERRUN");
                     }
                 } catch (InterruptedException interruptedException) {
-                    System.out.println("Media consumer interrupted, exiting.");
+                    System.out.println("[" + getMediaType() + "] " +"Media consumer interrupted, exiting.");
                     return;
                 }
             }

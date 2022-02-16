@@ -1,5 +1,7 @@
 package com.example.pilot.networking.tcp;
 
+import com.example.pilot.networking.observers.SsRcvdObserver;
+import com.example.pilot.utils.ScreenShot;
 import com.example.pilot.utils.SpecialKeyCode;
 import com.example.pilot.utils.KeyboardModifier;
 import org.json.JSONException;
@@ -10,7 +12,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 
-public class MessageSender implements AuthSender {
+public class MessageSender implements AuthSender, SsRcvdObserver {
     private final Sender sender;
 
     public MessageSender(Sender sender) {
@@ -93,6 +95,7 @@ public class MessageSender implements AuthSender {
     }
 
 
+    // TODO remove it
     public void sendSSRcvdMessage() {
         try {
             sender.enqueueJsonMessageRequest(buildStringMsg(MsgCode.SS_RCVD, ""));
@@ -127,6 +130,16 @@ public class MessageSender implements AuthSender {
         try {
             sender.enqueueJsonMessageRequest(
                     buildStringMsg(isMuted ? MsgCode.MUTE : MsgCode.UNMUTE, ""));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onScreenShotRcvd(ScreenShot ss) {
+        try {
+            sender.enqueueJsonMessageRequest(buildStringMsg(MsgCode.SS_RCVD, ""));
+            System.out.println("SS MESSAGE ENQUEUED");
         } catch (JSONException e) {
             e.printStackTrace();
         }

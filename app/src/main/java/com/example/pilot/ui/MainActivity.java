@@ -19,9 +19,11 @@ import com.example.pilot.security.MessageSecurityPreprocessor;
 import com.example.pilot.security.TCPGuard;
 import com.example.pilot.security.TLSHandler;
 import com.example.pilot.ui.events.ImageScaleListener;
-import com.example.pilot.ui.utils.MediaStreamHandler;
+import com.example.pilot.networking.udp.MediaStreamHandler;
 import com.example.pilot.ui.utils.FPSCounter;
+import com.example.pilot.ui.utils.GuiRunner;
 import com.example.pilot.ui.utils.SoundPlayer;
+import com.example.pilot.ui.utils.VideoPlayer;
 import com.example.pilot.ui.views.MainUIHandler;
 import com.example.pilot.ui.views.SettingsHandler;
 import com.example.pilot.utils.KeyboardModifier;
@@ -39,7 +41,7 @@ import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements GuiRunner {
     private MainUIHandler uiHandler;
     private ConnectionHandler connectionHandler;
     private MessageSender messageSender;
@@ -52,6 +54,8 @@ public class MainActivity extends AppCompatActivity {
     private MessageReceiver messageReceiver;
     private Sender sender;
     private Listener listener;
+    private VideoPlayer videoPlayer;
+    private MediaStreamHandler videoStreamHandler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,15 +90,18 @@ public class MainActivity extends AppCompatActivity {
         uiHandler = new MainUIHandler(messageSender, this);
         settingsHandler = new SettingsHandler(this);
 
-
         soundPlayer = new SoundPlayer();
+        videoPlayer = new VideoPlayer(this, uiHandler.getImageViewer(), 30);
 
         // TODO args from somewhere
-        audioStreamHandler = new MediaStreamHandler(soundPlayer,   256);
+
+        audioStreamHandler = new MediaStreamHandler(soundPlayer, 256);
+        videoStreamHandler = new MediaStreamHandler(videoPlayer, 256);
 
         mediaReceiver = new MediaReceiver(preferencesLoader.getPort());
 
         mediaReceiver.addMediaStreamHandler(audioStreamHandler, false);
+        mediaReceiver.addMediaStreamHandler(videoStreamHandler, true);
 
         messageReceiver.addAuthStatusObserver(uiHandler);
         messageReceiver.addSSRcvdObserver(uiHandler);
@@ -112,6 +119,7 @@ public class MainActivity extends AppCompatActivity {
         network.start();
 
         FPSCounter fpsCounter = new FPSCounter(uiHandler);
+        videoPlayer.addSSRcvdObserver(fpsCounter);
         messageReceiver.addSSRcvdObserver(fpsCounter);
 
         Thread timer = new Thread(fpsCounter);
@@ -120,6 +128,8 @@ public class MainActivity extends AppCompatActivity {
         Thread soundThread = new Thread(soundPlayer);
         soundThread.start();
 
+        Thread videoThread = new Thread(videoPlayer);
+        videoThread.start();
     }
 
     @Override
@@ -251,5 +261,10 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
             System.out.println("failed to save key");
         }
+    }
+
+    @Override
+    public void scheduleGuiTask(Runnable task) {
+        this.runOnUiThread(task);
     }
 }

@@ -38,19 +38,21 @@ class VideoStreamer:
 
         with self.ss_capturer:
             while True:
-                with self.ss_rcvd_lock:
-                    while self.keep_streaming and self.sent_overhead >= self.max_batch_sent_ss:
-                        self.ss_rcvd_cond.wait()
+                # with self.ss_rcvd_lock:
+                #     while self.keep_streaming and self.sent_overhead >= self.max_batch_sent_ss:
+                #         self.ss_rcvd_cond.wait()
 
-                    self.sent_overhead += 1
+                #     self.sent_overhead += 1
 
-                ss_b64 = self.ss_capturer.get_ss_base64()
+                # ss_b64 = self.ss_capturer.get_ss_base64()
+                ss_bytes = self.ss_capturer.get_ss_bytes()
                 with self.stream_lock:
                     if not self.keep_streaming:
                         raise ConnectionError('Stream interrupted')
 
                 # throws connection error on lost connection
-                self.sender.send_ss(ss_b64)
+                # self.sender.send_ss(ss_b64)
+                self.sender.send_ss_bytes(ss_bytes)
 
                 self.fps_ctl.frame_sent()
                 self.fps_ctl.wait_when_legal()

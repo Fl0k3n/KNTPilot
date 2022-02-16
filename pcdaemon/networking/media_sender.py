@@ -38,7 +38,7 @@ class DataSender:
                               audio_frame, self.audio_frame_seq)
         self.audio_frame_seq += 1
 
-    def self_video_frame(self, video_frame: bytes):
+    def send_video_frame(self, video_frame: bytes):
         self._send_fragmented(MediaMsgCode.VIDEO_FRAME,
                               video_frame, self.video_frame_seq)
         self.video_frame_seq += 1

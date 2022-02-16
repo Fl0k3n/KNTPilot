@@ -28,6 +28,9 @@ class SSCapturer:
         self.sct = None
 
     def get_ss_base64(self) -> str:
+        return base64.b64encode(self.get_ss_bytes()).decode('utf-8')
+
+    def get_ss_bytes(self) -> bytes:
         with self.screen_settings_lock:
             mon = {"top":   self.screen_y,   "left": self.screen_x + self.monitor_offset_x,
                    "width": self.ss_witdth, "height": self.ss_height,
@@ -41,9 +44,9 @@ class SSCapturer:
         with io.BytesIO() as stream:
             img.save(stream, format='JPEG')
             stream.seek(0)
-            bytes = stream.read()
+            ss_bytes = stream.read()
 
-        return base64.b64encode(bytes).decode('utf-8')
+        return ss_bytes
 
     def __enter__(self):
         with self.screen_settings_lock:
