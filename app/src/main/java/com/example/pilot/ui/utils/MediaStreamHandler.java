@@ -1,24 +1,31 @@
 package com.example.pilot.ui.utils;
 
 
+import com.example.pilot.networking.udp.FragmentAssembler;
+import com.example.pilot.networking.udp.FragmentBuffer;
+import com.example.pilot.networking.udp.MediaCode;
+import com.example.pilot.networking.udp.MediaFrame;
+import com.example.pilot.networking.udp.StreamSkippedObserver;
+
+import java.net.DatagramPacket;
+import java.util.LinkedList;
 import java.util.Optional;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class AudioStreamHandler {
+public class MediaStreamHandler {
     // buffer will hold up to (prefetchMs * BUFFER_SIZE_MULTIPLIER) data
     // TODO make this adaptive
     private static final int BUFFER_SIZE_MULTIPLIER = 4;
     private static final float PREFETCH_TIME_MULTIPLIER = 1.5f;
 
-    private final SoundPlayer soundPlayer;
-    private final int sampleRate;
+    private final MediaPlayer mediaPlayer;
     private final int bufferPrefetchMs;
-    private final int samplesInSingleFrame;
 
     private final int prefetchFrameAmount;
     private volatile boolean prefetchMode;
-    private MediaFramesBuffer<AudioFrame> buffer;
+    private MediaFramesBuffer buffer;
+    private LinkedList<StreamSkippedObserver> streamSkippedObservers;
 
     private long recvStartedAt;
 
@@ -26,21 +33,28 @@ public class AudioStreamHandler {
     private final Condition consumerCond;
     private Thread audioConsumerThread;
 
-    public AudioStreamHandler(SoundPlayer soundPlayer, int initialBufferPreFetchMs,
-                              int sampleRate, int samplesInSingleFrame)
-    {
-        this.soundPlayer = soundPlayer;
+    public MediaStreamHandler(MediaPlayer mediaPlayer, int initialBufferPreFetchMs) {
+        this.mediaPlayer = mediaPlayer;
         this.bufferPrefetchMs = initialBufferPreFetchMs;
-        this.sampleRate = sampleRate;
-        this.samplesInSingleFrame = samplesInSingleFrame;
         this.prefetchMode = true;
 
         this.consumerLock = new ReentrantLock();
         this.consumerCond = this.consumerLock.newCondition();
 
+        this.streamSkippedObservers = new LinkedList<>();
+
         prefetchFrameAmount = computePrefetchSize();
 
-        initAudioConsumerThread();
+        initMediaConsumerThread();
+    }
+
+    // shouldn't be used when stream is already running
+    public void addStreamSkippedObserver(StreamSkippedObserver observer) {
+        streamSkippedObservers.add(observer);
+    }
+
+    public MediaCode getMediaType() {
+        return mediaPlayer.getMediaType();
     }
 
     public void restart() {
@@ -56,13 +70,13 @@ public class AudioStreamHandler {
     }
 
     private void restartBuffer() {
-        buffer = new MediaFramesBuffer<>(4 * prefetchFrameAmount);
+        buffer = new MediaFramesBuffer(4 * prefetchFrameAmount);
     }
 
-    public synchronized void addAudioFrame(AudioFrame audioFrame) {
+    public synchronized void addMediaFrame(MediaFrame mediaFrame) {
         while (true) {
             try {
-                buffer.put(audioFrame);
+                buffer.put(mediaFrame);
                 break;
             } catch (OverrunException overrunException) {
                 System.out.println(overrunException.getMessage());
@@ -99,20 +113,13 @@ public class AudioStreamHandler {
     }
 
 
-    private float getAudioFrameTimeSpan() {
-        float samplePeriod = 1.0f / sampleRate * 1000; // in ms
-
-        return samplesInSingleFrame * samplePeriod;
-    }
-
-
     private int computePrefetchSize() {
-        float audioFrameTimeSpan = getAudioFrameTimeSpan();
+        float frameTimeSpanMs = mediaPlayer.getFrameTimeSpanMs();
 
-        return (int)(bufferPrefetchMs / audioFrameTimeSpan + 1);
+        return (int)(bufferPrefetchMs / frameTimeSpanMs + 1);
     }
 
-    private void initAudioConsumerThread() {
+    private void initMediaConsumerThread() {
         audioConsumerThread = new Thread(() -> {
             while (true) {
                 try {
@@ -124,16 +131,16 @@ public class AudioStreamHandler {
                         consumerLock.unlock();
                     }
 
-                    Optional<AudioFrame> audioFrame = fetchNextAudioFrame();
+                    Optional<MediaFrame> mediaFrame = fetchNextMediaFrame();
 
-                    if (audioFrame.isPresent()) {
-                        soundPlayer.enqueueAudioFrame(audioFrame.get());
+                    if (mediaFrame.isPresent()) {
+                        mediaPlayer.enqueueMediaFrame(mediaFrame.get());
                     }
                     else {
                         System.out.println("BUFFER UNDERRUN");
                     }
                 } catch (InterruptedException interruptedException) {
-                    System.out.println("Audio consumer interrupted, exiting.");
+                    System.out.println("Media consumer interrupted, exiting.");
                     return;
                 }
             }
@@ -143,7 +150,7 @@ public class AudioStreamHandler {
         audioConsumerThread.start();
     }
 
-    private synchronized Optional<AudioFrame> fetchNextAudioFrame() {
+    private synchronized Optional<MediaFrame> fetchNextMediaFrame() {
         if (buffer.getFilledSize() == 0) {
             prefetchMode = true;
             recvStartedAt = System.currentTimeMillis();
@@ -152,10 +159,13 @@ public class AudioStreamHandler {
         }
         else if (buffer.getConsecutiveFilledSize() == 0) {
             buffer.skipMissingGap();
+            int newSeqNum = buffer.peek().getSeqNum();
+            streamSkippedObservers.forEach(observer -> observer.onSkippedTo(newSeqNum));
         }
 
-        AudioFrame audioFrame = buffer.get();
+        MediaFrame mediaFrame = buffer.get();
 
-        return Optional.of(audioFrame);
+        return Optional.of(mediaFrame);
     }
+
 }

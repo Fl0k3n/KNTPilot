@@ -2,7 +2,7 @@ import atexit
 import socket
 from socket import AF_INET, SOCK_DGRAM
 from networking.abstract.conn_state_obs import ConnectionStateObserver
-from networking.data_sender import DataSender
+from networking.media_sender import DataSender
 from security.session import Session
 
 

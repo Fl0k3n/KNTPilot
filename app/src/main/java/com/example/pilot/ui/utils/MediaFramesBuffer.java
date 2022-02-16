@@ -1,6 +1,8 @@
 package com.example.pilot.ui.utils;
 
 
+import com.example.pilot.networking.udp.MediaFrame;
+
 /**
  * TCP window-alike class, designed for multimedia sent via UDP such that some frames can be missed
  * and some can be delivered more than once, out-of-order frames will be saved in appropriate buffer position,
@@ -11,7 +13,7 @@ package com.example.pilot.ui.utils;
  *
  * User should check buffer size before either inserting or removing frame, class is not thread safe.
  */
-public class MediaFramesBuffer<T extends MediaFrame>{
+public class MediaFramesBuffer {
     private final int size;
     private final MediaFrame[] buff;
     private int rPtr, lastInOrderPtr;
@@ -72,8 +74,9 @@ public class MediaFramesBuffer<T extends MediaFrame>{
         } while (lastInOrderPtr != rPtr && buff[lastInOrderPtr] != null);
     }
 
-    public T get() {
-        T res = (T) buff[rPtr];
+    // removes media frame, assumes its present
+    public MediaFrame get() {
+        MediaFrame res =  buff[rPtr];
         clearReadPos();
         consecutiveFilledSize--;
         filledSize--;
@@ -156,5 +159,9 @@ public class MediaFramesBuffer<T extends MediaFrame>{
 
     private int modInc(int x) {
         return (x + 1) % size;
+    }
+
+    public MediaFrame peek() {
+        return buff[rPtr];
     }
 }

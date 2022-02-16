@@ -35,7 +35,7 @@ class TLSCode(Enum):
     HELLO = 0
     # data contains utf-8 encoded certificate
     CERTIFICATE = 1
-    #
+    # data contains secret key encrypted with subject's public key
     SECRET = 2
-    # body ?
+    # data contains packet from underlying protocol encrypted with established secret key
     SECURE = 3

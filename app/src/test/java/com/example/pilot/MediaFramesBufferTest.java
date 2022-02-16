@@ -1,6 +1,5 @@
 package com.example.pilot;
 
-import com.example.pilot.ui.utils.MediaFrame;
 import com.example.pilot.ui.utils.MediaFramesBuffer;
 
 import org.junit.Assert;

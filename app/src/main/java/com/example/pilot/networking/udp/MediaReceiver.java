@@ -1,59 +1,80 @@
 package com.example.pilot.networking.udp;
 
 import com.example.pilot.networking.observers.ConnectionStatusObserver;
-import com.example.pilot.ui.utils.AudioFrame;
-import com.example.pilot.ui.utils.AudioStreamHandler;
+import com.example.pilot.ui.utils.MediaStreamHandler;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.Inet4Address;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketAddress;
 import java.net.SocketException;
-import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.Optional;
 
 public class MediaReceiver implements Runnable, ConnectionStatusObserver {
     private final static String IP_ADDR = "0.0.0.0";
 
-    private final static int MAX_AUDIO_PACKET_SIZE = 1500;
-
+    private final int port;
+    private final static int MAX_DATAGRAM_SIZE = 1500;
     private DatagramSocket socket;
 
-    private final AudioStreamHandler audioStreamHandler;
+    private final ArrayList<MediaStreamHandler> mediaStreamHandlers;
+    private final ArrayList<FragmentAssembler> fragmentAssemblers;
 
     private Thread rcvrThread;
 
-    private final int port;
 
-    public MediaReceiver(int port, AudioStreamHandler audioStreamHandler) {
+    public MediaReceiver(int port) {
         this.port = port;
-        this.audioStreamHandler = audioStreamHandler;
+
+        int expectedStreamCount = MediaCode.values().length;
+
+        mediaStreamHandlers = new ArrayList<>(expectedStreamCount);
+        fragmentAssemblers = new ArrayList<>(expectedStreamCount);
+    }
+
+    public void addMediaStreamHandler(MediaStreamHandler mediaStreamHandler, boolean requiresFragmentation) {
+        int arrayIdx = mediaStreamHandler.getMediaType().ordinal();
+        mediaStreamHandlers.add(arrayIdx, mediaStreamHandler);
+
+        FragmentAssembler fragmentAssembler = new FragmentAssembler(requiresFragmentation);
+
+        if (requiresFragmentation)
+            mediaStreamHandler.addStreamSkippedObserver(fragmentAssembler);
+
+        fragmentAssemblers.add(arrayIdx, fragmentAssembler);
+    }
+
+
+    private FragmentAssembler getFragmentAssembler(MediaCode code) {
+        return fragmentAssemblers.get(code.ordinal());
+    }
+
+    private MediaStreamHandler getStreamHandler(MediaCode code) {
+        return mediaStreamHandlers.get(code.ordinal());
     }
 
 
     @Override
     public void run() {
         System.out.println("Media listening");
-        byte[] buf = new byte[MAX_AUDIO_PACKET_SIZE];
+        byte[] buf = new byte[MAX_DATAGRAM_SIZE];
         try {
             while (true) {
-                DatagramPacket datagramPacket = new DatagramPacket(buf, MAX_AUDIO_PACKET_SIZE);
+                DatagramPacket datagramPacket = new DatagramPacket(buf, MAX_DATAGRAM_SIZE);
                 socket.receive(datagramPacket);
                 try {
-                    int code = datagramPacket.getData()[0];
-                    if (code == 1) {
-                        handleAudioFrame(datagramPacket);
-                    }
-                    else {
-                        System.out.println("Invalid code " + code);
-                    }
+                    MediaCode code = MediaFrame.extractCode(datagramPacket.getData());
+                    FragmentAssembler assembler = getFragmentAssembler(code);
+
+                    assembler.handleDatagram(datagramPacket)
+                            .ifPresent(mediaFrame -> getStreamHandler(code).addMediaFrame(mediaFrame));
                 } catch (Exception e) {
                     // TODO
-                    System.out.println("Failed to handle datagram from " + datagramPacket.getAddress() + "\n" + datagramPacket);
+                    e.printStackTrace();
+                    System.out.println("Failed to handle datagram from " + datagramPacket.getAddress() + "\n" + e.getMessage());
                 }
             }
         } catch (IOException exception) {
@@ -61,38 +82,6 @@ public class MediaReceiver implements Runnable, ConnectionStatusObserver {
         }
     }
 
-    private void handleAudioFrame(DatagramPacket datagramPacket) {
-        AudioFrame audioFrame = decodeAudioFrame(ByteBuffer.wrap(datagramPacket.getData()));
-
-        audioStreamHandler.addAudioFrame(audioFrame);
-    }
-
-    private AudioFrame decodeAudioFrame(ByteBuffer byteBuffer) {
-        byteBuffer.order(ByteOrder.BIG_ENDIAN);
-
-        byteBuffer.get(); // code
-        short size = byteBuffer.getShort();
-
-        byteBuffer.get(); // reserved
-
-        int signedIntSeq = byteBuffer.getInt();
-        long seq = signedIntSeq & 0xffffffffL; // convert 4b unsigned int to long
-
-        System.out.println("SEQ: " + seq);
-
-        short offset = byteBuffer.getShort();
-
-        byteBuffer.get(); // reserved
-        byteBuffer.get(); // reserved
-
-        AudioFrame audioFrame = new AudioFrame(size, seq);
-        audioFrame.putFragment(byteBuffer, offset, size);
-
-        if (!audioFrame.isFullyRecvd())
-            throw new RuntimeException("Fragmented frames not supported yet"); //TODO
-
-        return audioFrame;
-    }
 
     @Override
     public void failedToConnect(String errorMsg) {

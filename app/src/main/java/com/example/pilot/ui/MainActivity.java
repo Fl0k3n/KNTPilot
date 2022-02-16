@@ -19,7 +19,7 @@ import com.example.pilot.security.MessageSecurityPreprocessor;
 import com.example.pilot.security.TCPGuard;
 import com.example.pilot.security.TLSHandler;
 import com.example.pilot.ui.events.ImageScaleListener;
-import com.example.pilot.ui.utils.AudioStreamHandler;
+import com.example.pilot.ui.utils.MediaStreamHandler;
 import com.example.pilot.ui.utils.FPSCounter;
 import com.example.pilot.ui.utils.SoundPlayer;
 import com.example.pilot.ui.views.MainUIHandler;
@@ -47,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
     private SoundPlayer soundPlayer;
     private PreferencesLoader preferencesLoader;
     private SettingsHandler settingsHandler;
-    private AudioStreamHandler audioStreamHandler;
+    private MediaStreamHandler audioStreamHandler;
     private MediaReceiver mediaReceiver;
     private MessageReceiver messageReceiver;
     private Sender sender;
@@ -90,9 +90,11 @@ public class MainActivity extends AppCompatActivity {
         soundPlayer = new SoundPlayer();
 
         // TODO args from somewhere
-        audioStreamHandler = new AudioStreamHandler(soundPlayer, 250, 44100,  256);
+        audioStreamHandler = new MediaStreamHandler(soundPlayer,   256);
 
-        mediaReceiver = new MediaReceiver(preferencesLoader.getPort(), audioStreamHandler);
+        mediaReceiver = new MediaReceiver(preferencesLoader.getPort());
+
+        mediaReceiver.addMediaStreamHandler(audioStreamHandler, false);
 
         messageReceiver.addAuthStatusObserver(uiHandler);
         messageReceiver.addSSRcvdObserver(uiHandler);
