@@ -17,4 +17,6 @@ public interface Guard {
     int getNonceLength();
 
     int getTagLength();
+
+    byte[] getNonce();
 }

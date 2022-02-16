@@ -6,6 +6,7 @@ from media.sound_capturer import SoundCapturer
 from media.streamers.sound_streamer import SoundStreamer
 from networking.abstract.sender import Sender
 from media.streamers.video_streamer import VideoStreamer
+from security.session import Session
 from utils.special_key_codes import KeyboardModifier, SpecialKeyCode
 from media.input_ctl import InputController
 from media.ss_capturer import SSCapturer
@@ -71,9 +72,9 @@ class Streamer(ConnectionStateObserver):
     def unmute_sound(self):
         self.sound_streamer.unmute()
 
-    def connection_established(self, client_socket: socket):
+    def connection_established(self, session: Session):
         pass
 
-    def connection_lost(self, client_socket: socket):
+    def connection_lost(self, session: Session):
         self.stop_streaming()
         self.input_ctl.lock_system()

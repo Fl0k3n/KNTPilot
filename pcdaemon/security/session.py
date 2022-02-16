@@ -14,9 +14,16 @@ class Session:
         self.tcp_sock = client_tcp_socket
         self.session_state = SessionState.START
         self.tcp_secret_key = None
+        self.authenticated = False
 
     def get_session_state(self) -> SessionState:
         return self.session_state
+
+    def set_auth_state(self, authenticated: bool):
+        self.authenticated = authenticated
+
+    def is_authenticated(self) -> bool:
+        return self.authenticated
 
     def set_tcp_secret_key(self, key: bytes):
         self.tcp_secret_key = key

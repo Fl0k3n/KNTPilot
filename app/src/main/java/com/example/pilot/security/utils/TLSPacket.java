@@ -37,7 +37,7 @@ public class TLSPacket {
 
         splitToHeaderAndData();
 
-        ByteBuffer byteBuffer = ByteBuffer.wrap(header);
+        ByteBuffer byteBuffer = convertToByteBuffer(header);
 
         code = TLSCode.fromInteger(byteBuffer.get(0));
         size = byteBuffer.getShort(1);
@@ -51,7 +51,7 @@ public class TLSPacket {
         this.data = data;
         this.full = mergeHeaderAndData();
 
-        ByteBuffer byteBuffer = ByteBuffer.wrap(header);
+        ByteBuffer byteBuffer = convertToByteBuffer(header);
 
         code = TLSCode.fromInteger(byteBuffer.get(0));
         size = byteBuffer.getShort(1);
@@ -87,13 +87,17 @@ public class TLSPacket {
     }
 
     public static int getMessageSize(byte[] basicHeader, int tagSize) {
-        ByteBuffer byteBuffer = ByteBuffer.wrap(basicHeader);
-        byteBuffer.order(ByteOrder.BIG_ENDIAN);
+        // exluding size of basic header
+        ByteBuffer byteBuffer = convertToByteBuffer(basicHeader);
 
         int messageSize = (int) byteBuffer.getShort(1) + byteBuffer.get(3);
         if (TLSCode.fromInteger(byteBuffer.get(0)) == TLSCode.SECURE)
             messageSize += tagSize;
 
         return messageSize;
+    }
+
+    private static ByteBuffer convertToByteBuffer(byte[] data) {
+        return ByteBuffer.wrap(data).order(ByteOrder.BIG_ENDIAN);
     }
 }

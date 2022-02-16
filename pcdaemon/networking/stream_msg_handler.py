@@ -1,36 +1,36 @@
 import json
-from socket import socket
 from networking.abstract.conn_state_obs import ConnectionStateObserver
-from security.tls_handler import TLSHandler
+from security.session import Session
+from utils.auth_state_obs import AuthStateObserver
 from utils.special_key_codes import KeyboardModifier, SpecialKeyCode
 from typing import Any
-from utils.msg_codes import MsgCode, TLSCode
+from utils.msg_codes import MsgCode
 from networking.abstract.msg_handler import MsgHandler
 from utils.authenticator import Authenticator
 from media.streamers.streamer import Streamer
 
 
 class StreamMsgHandler(MsgHandler, ConnectionStateObserver):
-    def __init__(self, auth: Authenticator, client_socket: socket = None):
+    def __init__(self, auth: Authenticator):
         super().__init__()
         self.auth = auth
         self.streamer = None
-        self.client = client_socket
+        self.session = None
 
     def set_streamer(self, streamer: Streamer):
         self.streamer = streamer
 
-    def connection_established(self, client_socket: socket):
-        self.client = client_socket
+    def connection_established(self, session: Session):
+        self.session = session
 
     def handle_msg(self, code: MsgCode, data: Any):
         if code == MsgCode.AUTH:
             # authenticator will call its state observers
-            self.auth.validate(data['password'], self.client)
+            self.auth.validate(data['password'], self.session)
             return
 
-        assert self.auth.is_validated(
-            self.client), f"Rcvd code {code} before authentication"
+        assert self.session.is_authenticated(
+        ), f"Rcvd code {code} before authentication"
 
         if code == MsgCode.MOVE_SCREEN:
             self.streamer.move_screen(data['dx'], data['dy'])
@@ -59,9 +59,9 @@ class StreamMsgHandler(MsgHandler, ConnectionStateObserver):
     def rcving_failed(self, err: Exception):
         print("Lost connection")
         print(err)
-        client = self.client
+        session = self.session
         for obs in self.conn_state_obss:
-            obs.connection_lost(client)
+            obs.connection_lost(session)
 
-    def connection_lost(self, client_socket: socket):
-        self.client = None
+    def connection_lost(self, session: Session):
+        self.session = None

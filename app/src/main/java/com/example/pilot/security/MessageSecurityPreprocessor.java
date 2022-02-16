@@ -10,15 +10,13 @@ import java.security.SecureRandom;
 
 public class MessageSecurityPreprocessor {
     private final Guard guard;
-    private final SecureRandom nonceGenerator;
 
     public MessageSecurityPreprocessor(Guard guard) {
         this.guard = guard;
-        this.nonceGenerator = new SecureRandom();
     }
 
     public byte[] preprocessToSend(byte[] messageToSend) throws SecurityException {
-        byte[] nonce = getNonce();
+        byte[] nonce = guard.getNonce();
         TLSPacket tlsPacket = new TLSPacket(TLSCode.SECURE, (short) messageToSend.length, nonce.length, nonce, messageToSend);
 
         System.out.println("sending len: " + messageToSend.length);
@@ -40,11 +38,6 @@ public class MessageSecurityPreprocessor {
         return guard.decrypt(tlsPacket.data, tlsPacket.header, nonce);
     }
 
-    private byte[] getNonce() {
-        byte[] nonce = new byte[guard.getNonceLength()];
-        nonceGenerator.nextBytes(nonce);
-        return nonce;
-    }
 
     public int getBasicHeaderSize() {
         return TLSPacket.HEADER_SIZE;

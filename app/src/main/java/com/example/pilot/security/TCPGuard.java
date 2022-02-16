@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Base64;
 
 import javax.crypto.AEADBadTagException;
@@ -26,10 +27,12 @@ public class TCPGuard implements Guard{
     private static final int NONCE_LENGTH = 12;
     private static final int KEY_LENGTH = 32;
     private final SecretKey sessionKey;
+    private final SecureRandom nonceGenerator;
 
 
     public TCPGuard() throws NoSuchAlgorithmException {
         this.sessionKey = generateKey();
+        this.nonceGenerator = new SecureRandom();
     }
 
     private SecretKey generateKey() throws NoSuchAlgorithmException {
@@ -74,6 +77,13 @@ public class TCPGuard implements Guard{
     @Override
     public int getTagLength() {
         return MAC_LENGTH;
+    }
+
+    @Override
+    public byte[] getNonce() {
+        byte[] nonce = new byte[NONCE_LENGTH];
+        nonceGenerator.nextBytes(nonce);
+        return nonce;
     }
 
     private Cipher initCipher(byte[] nonce, int mode, byte[] aad) throws SecurityException {

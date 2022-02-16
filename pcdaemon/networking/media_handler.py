@@ -3,6 +3,7 @@ import socket
 from socket import AF_INET, SOCK_DGRAM
 from networking.abstract.conn_state_obs import ConnectionStateObserver
 from networking.data_sender import DataSender
+from security.session import Session
 
 
 class MediaHandler(ConnectionStateObserver):
@@ -15,12 +16,13 @@ class MediaHandler(ConnectionStateObserver):
 
         self.data_sender = None
 
-    def connection_established(self, client_tcp_socket: socket):
+    def connection_established(self, session: Session):
+        client_tcp_socket = session.get_tcp_socket()
         ip_addr = client_tcp_socket.getpeername()[0]
         self.data_sender = DataSender(
             self.serv_sock, self.remote_port, ip_addr)
 
-    def connection_lost(self, client_socket: socket):
+    def connection_lost(self, session: Session):
         # TODO
         pass
 

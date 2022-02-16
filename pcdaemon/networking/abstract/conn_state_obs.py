@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
-from socket import socket
+from security.session import Session
 
 
 class ConnectionStateObserver(ABC):
     @abstractmethod
-    def connection_established(self, client_socket: socket):
+    def connection_established(self, session: Session):
         pass
 
     @abstractmethod
-    def connection_lost(self, client_socket: socket):
+    def connection_lost(self, session: Session):
         pass
