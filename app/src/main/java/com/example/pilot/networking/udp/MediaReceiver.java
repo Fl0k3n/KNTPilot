@@ -2,6 +2,9 @@ package com.example.pilot.networking.udp;
 
 import com.example.pilot.networking.observers.ConnectionStatusObserver;
 import com.example.pilot.networking.tcp.MsgCode;
+import com.example.pilot.security.MessageSecurityPreprocessor;
+import com.example.pilot.security.exceptions.AuthenticationException;
+import com.example.pilot.security.exceptions.SecurityException;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -19,16 +22,17 @@ public class MediaReceiver implements Runnable, ConnectionStatusObserver {
     private final static int MAX_DATAGRAM_SIZE = 1500;
     private DatagramSocket socket;
 
+    private final MessageSecurityPreprocessor securityPreprocessor;
+
     private final MediaStreamHandler[] mediaStreamHandlers;
     private final FragmentAssembler[] fragmentAssemblers;
 
     private Thread rcvrThread;
 
 
-    public MediaReceiver(int port) {
+    public MediaReceiver(int port, MessageSecurityPreprocessor securityPreprocessor) {
         this.port = port;
-
-        int expectedStreamCount = MediaCode.values().length;
+        this.securityPreprocessor = securityPreprocessor;
 
         int arraySize = getArraySize();
 
@@ -73,13 +77,34 @@ public class MediaReceiver implements Runnable, ConnectionStatusObserver {
             while (true) {
                 DatagramPacket datagramPacket = new DatagramPacket(buf, MAX_DATAGRAM_SIZE);
                 socket.receive(datagramPacket);
+
+                int length = datagramPacket.getLength();
+                byte[] TLSPacket = new byte[length];
+                byte[] packet = null;
+                System.arraycopy(datagramPacket.getData(), 0, TLSPacket, 0, length);
                 try {
-                    MediaCode code = MediaFrame.extractCode(datagramPacket.getData());
+                    packet = securityPreprocessor.preprocessReceived(TLSPacket);
+                }
+                catch (AuthenticationException e) {
+                    // probably udp error, ignore this frame // TODO
+                    System.out.println("Auth failed for Udp message " + e.getMessage());
+                    e.printStackTrace();
+                    continue;
+                }
+                catch (SecurityException e) {
+                    System.out.println("Failed to preprocess Udp message " + e.getMessage());
+                    e.printStackTrace();
+                    return;
+                }
+
+                try {
+                    MediaCode code = MediaFrame.extractCode(packet);
                     FragmentAssembler assembler = getFragmentAssembler(code);
 
-                    assembler.handleDatagram(datagramPacket)
+                    assembler.handleDatagram(packet, packet.length)
                             .ifPresent(mediaFrame -> getStreamHandler(code).addMediaFrame(mediaFrame));
-                } catch (Exception e) {
+                }
+                catch (Exception e) {
                     // TODO
                     e.printStackTrace();
                     System.out.println("Failed to handle datagram from " + datagramPacket.getAddress() + "\n" + e.getMessage());
@@ -115,5 +140,9 @@ public class MediaReceiver implements Runnable, ConnectionStatusObserver {
     @Override
     public void connectionLost(Socket serverSocket) {
         socket.close(); // TODO
+    }
+
+    public void setMediaTransportKey(byte[] decoded) {
+        this.securityPreprocessor.setKey(decoded);
     }
 }

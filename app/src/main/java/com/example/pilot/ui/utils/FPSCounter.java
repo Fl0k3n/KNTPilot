@@ -1,57 +1,37 @@
 package com.example.pilot.ui.utils;
 
-import com.example.pilot.networking.observers.SsRcvdObserver;
-import com.example.pilot.utils.ScreenShot;
+import java.util.concurrent.atomic.AtomicLong;
 
-import java.util.LinkedList;
+public class FPSCounter {
+    private final double alpha = 0.875;
+    private final AtomicLong frameTimeApproxMs;
+    private long lastUpdateTimestampMs;
 
-public class FPSCounter implements SsRcvdObserver, Runnable {
-    private final long tickTimeNano;
-    private final LinkedList<Long> timestampsNano;
-    private final FpsUpdater fpsUpdater;
-
-    public FPSCounter(FpsUpdater updater) {
-        this(updater, 450_000_000);
+    public FPSCounter(int expected_fps) {
+        this.frameTimeApproxMs = new AtomicLong(1 / expected_fps);// estimate perfect at init
+        lastUpdateTimestampMs = -1;
     }
 
-    public FPSCounter(FpsUpdater updater, long tickTimeNano) {
-        this.fpsUpdater = updater;
-        this.tickTimeNano = tickTimeNano;
-        timestampsNano = new LinkedList<>();
+    public void onFrameDisplayed() {
+        long now = System.currentTimeMillis();
+
+        if(lastUpdateTimestampMs != -1) {
+            frameTimeApproxMs.set((long) (alpha * frameTimeApproxMs.get() + (1 - alpha) * (now - lastUpdateTimestampMs)));
+        }
+
+        lastUpdateTimestampMs = now;
     }
 
-    @Override
-    public synchronized void onScreenShotRcvd(ScreenShot ss) {
-        long now = System.nanoTime();
-        timestampsNano.addLast(now);
-        remove_old();
-    }
-
-
-
-    @Override
-    public void run() {
-        while (true) {
-            try {
-                Thread.sleep(tickTimeNano / 1_000_000);
-            } catch (InterruptedException e) {
-                return;
-            }
-
-            int fps;
-            synchronized (this) {
-                remove_old();
-                fps = timestampsNano.size();
-            }
-            fpsUpdater.updateFPS(fps);
+    public int getFps() {
+        try {
+            return (int) (1000 / (frameTimeApproxMs.get()));
+        } catch (ArithmeticException arithmeticException) {
+            // zero division error may happen before transmission kicks off
+            return -1;
         }
     }
 
-    private void remove_old() {
-        // user should synchronize
-        long now = System.nanoTime();
-        while (timestampsNano.size() > 0 &&
-                now - timestampsNano.getFirst() > 1_000_000_000)
-            timestampsNano.removeFirst();
+    public long getFrameTimeApproxMs() {
+        return frameTimeApproxMs.get();
     }
 }

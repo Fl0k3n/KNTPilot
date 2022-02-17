@@ -135,6 +135,14 @@ public class MessageSender implements AuthSender, SsRcvdObserver {
         }
     }
 
+    public void sendMediaSecretChannelAck() {
+        try {
+            sender.enqueueJsonMessageRequest(buildStringMsg(MsgCode.UDP_SECRET_ACK, ""));
+        } catch (JSONException jsonException) {
+            jsonException.printStackTrace();
+        }
+    }
+
     @Override
     public void onScreenShotRcvd(ScreenShot ss) {
         try {

@@ -28,6 +28,10 @@ class MsgCode(Enum):
     MUTE = 10           # <-
     # body = empty string
     UNMUTE = 11         # <-
+    # body = secret: secret key for streaming data encryption (256b ChaCha20), base64 encoded
+    UDP_SECRET = 12     # ->
+    # body = empty string
+    UDP_SECRET_ACK = 13
 
 
 class TLSCode(Enum):

@@ -26,8 +26,12 @@ public class MessageSecurityPreprocessor {
         return new TLSPacket(tlsPacket.header, encryptedData).full;
     }
 
+    // returns decrypted data from underlying protocol, with all security-layer data stripped
     public byte[] preprocessReceived(byte[] receivedMessage) throws SecurityException, AuthenticationException {
         TLSPacket tlsPacket = new TLSPacket(receivedMessage);
+
+        if (tlsPacket.code != TLSCode.SECURE)
+            throw new SecurityException("Expected encrypted packet but got code " + tlsPacket.code);
 
         byte[] nonce = tlsPacket.nonce;
 
@@ -46,5 +50,9 @@ public class MessageSecurityPreprocessor {
     public int getMessageSize(byte[] basicHeader) {
         // first HEADER_SIZE bytes
         return TLSPacket.getMessageSize(basicHeader, guard.getTagLength());
+    }
+
+    public void setKey(byte[] decoded) {
+        guard.setSessionKey(decoded);
     }
 }

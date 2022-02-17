@@ -13,17 +13,21 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class VideoPlayer implements MediaPlayer, Runnable {
     private static final int QUEUE_CAPACITY = 1;
 
-    private final int fps;
+    private final int max_fps;
+    private final long perfectFrameTimeMs;
     private final GuiRunner guiRunner;
     private final ImageViewer imageViewer;
     private final BlockingQueue<MediaFrame> buffer;
+    private final FPSCounter fpsCounter;
 
     private LinkedList<SsRcvdObserver> ssRcvdObservers;
 
-    public VideoPlayer(GuiRunner guiRunner, ImageViewer imageViewer, int fps) {
+    public VideoPlayer(GuiRunner guiRunner, ImageViewer imageViewer, FPSCounter fpsCounter, int max_fps) {
         this.guiRunner = guiRunner;
         this.imageViewer = imageViewer;
-        this.fps = fps;
+        this.fpsCounter = fpsCounter;
+        this.max_fps = max_fps;
+        this.perfectFrameTimeMs = 1000 / max_fps;
         buffer = new LinkedBlockingQueue<>(QUEUE_CAPACITY);
         ssRcvdObservers = new LinkedList<>();
     }
@@ -41,7 +45,7 @@ public class VideoPlayer implements MediaPlayer, Runnable {
 
     @Override
     public float getFrameTimeSpanMs() {
-        return 1.0f / fps * 1000;
+        return 1.0f / max_fps * 1000;
     }
 
     @Override
@@ -51,21 +55,13 @@ public class VideoPlayer implements MediaPlayer, Runnable {
 
     @Override
     public void run() {
-        float frameTimeSpanMs = getFrameTimeSpanMs();
-        long lastDisplayTime = getTimestampMs();
         try {
             while (true) {
                 MediaFrame frame = buffer.take();
-                long timestamp = getTimestampMs();
-                long deltaT = timestamp - lastDisplayTime;
-                System.out.println("deltaT = " + deltaT);
-
-                if (deltaT < frameTimeSpanMs) {
-                    Thread.sleep(deltaT);
-                }
 
                 displayFrame(frame);
-                lastDisplayTime = getTimestampMs();
+
+                waitBeforeNextFrame();
             }
         } catch (InterruptedException consumed) {
             System.out.println("Video player interrupted, exiting");
@@ -75,11 +71,15 @@ public class VideoPlayer implements MediaPlayer, Runnable {
     private void displayFrame(MediaFrame mediaFrame) {
         final ScreenShot screenShot = new ScreenShot(mediaFrame.getBytes());
         guiRunner.scheduleGuiTask(() -> imageViewer.updateImage(screenShot));
-        System.out.println("Display scheduled");
+        fpsCounter.onFrameDisplayed();
         ssRcvdObservers.forEach(ssRcvdObserver -> ssRcvdObserver.onScreenShotRcvd(screenShot));
     }
 
-    private long getTimestampMs() {
-        return System.currentTimeMillis();
+    private void waitBeforeNextFrame() throws InterruptedException {
+        long estimatedFrameTime = fpsCounter.getFrameTimeApproxMs();
+        if (estimatedFrameTime > perfectFrameTimeMs)
+            Thread.sleep(estimatedFrameTime - 3 * perfectFrameTimeMs / 4);
+        else
+            Thread.sleep(perfectFrameTimeMs / 2);
     }
 }

@@ -13,27 +13,26 @@ public class FragmentAssembler implements StreamSkippedObserver {
     }
 
     // present if mediaFrame is fully assembled
-    public Optional<MediaFrame> handleDatagram(DatagramPacket datagramPacket) {
+    public Optional<MediaFrame> handleDatagram(byte[] packet, int length) {
         if (!requiresFragmentation) {
-            MediaFrame mediaFrame = buildMediaFrame(datagramPacket);
+            MediaFrame mediaFrame = buildMediaFrame(packet, length);
 
             if (!mediaFrame.isFullyRecvd())
                 throw new IllegalArgumentException("Expected full media frame, got fragmented with size "
-                        + mediaFrame.getTotalSize() + ", got only " + datagramPacket.getLength());
+                        + mediaFrame.getTotalSize() + ", got only " + length);
 
             return Optional.of(mediaFrame);
         }
 
-        return handleFragmentedDatagram(datagramPacket);
+        return handleFragmentedDatagram(packet, length);
     }
 
-    private Optional<MediaFrame> handleFragmentedDatagram(DatagramPacket datagramPacket) {
-        byte[] packet = datagramPacket.getData();
+    private Optional<MediaFrame> handleFragmentedDatagram(byte[] packet, int length) {
         int seqNum = MediaFrame.extractSeqNum(packet);
 
         MediaFrame alreadyPresentFrame = fragmentBuffer.get(seqNum);
         if (alreadyPresentFrame != null) {
-            alreadyPresentFrame.putFragment(packet, datagramPacket.getLength());
+            alreadyPresentFrame.putFragment(packet, length);
 
             if (alreadyPresentFrame.isFullyRecvd()) {
                 fragmentBuffer.removeFullyReceived(alreadyPresentFrame);
@@ -41,7 +40,7 @@ public class FragmentAssembler implements StreamSkippedObserver {
             }
         }
         else {
-            MediaFrame newFrame = buildMediaFrame(datagramPacket);
+            MediaFrame newFrame = buildMediaFrame(packet, length);
             fragmentBuffer.put(newFrame);
 
             // needed to keep counters valid, probably will never be ready tho
@@ -54,10 +53,9 @@ public class FragmentAssembler implements StreamSkippedObserver {
         return Optional.empty();
     }
 
-    private MediaFrame buildMediaFrame(DatagramPacket datagramPacket) {
-        byte[] packetData = datagramPacket.getData();
+    private MediaFrame buildMediaFrame(byte[] packetData, int length) {
         MediaFrame mediaFrame = MediaFrame.buildFromRaw(packetData);
-        mediaFrame.putFragment(packetData, datagramPacket.getLength());
+        mediaFrame.putFragment(packetData, length);
 
         return mediaFrame;
     }

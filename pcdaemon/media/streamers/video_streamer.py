@@ -55,7 +55,8 @@ class VideoStreamer:
                 self.sender.send_ss_bytes(ss_bytes)
 
                 self.fps_ctl.frame_sent()
-                self.fps_ctl.wait_when_legal()
+                fps = self.fps_ctl.wait_when_legal()
+                print(f'FPS ~ {fps}')
 
     def ss_rcvd(self):
         with self.ss_rcvd_lock:

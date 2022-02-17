@@ -8,6 +8,8 @@ import javax.crypto.SecretKey;
 public interface Guard {
     SecretKey getSessionKey();
 
+    void setSessionKey(byte[] keyBytes);
+
     // if guard support MAC then tag will be appended to the end of returned data
     byte[] encrypt(byte[] message, byte[] aad, byte[] nonce) throws SecurityException;
 

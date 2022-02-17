@@ -37,18 +37,18 @@ import java.util.List;
 
 public class MainUIHandler extends Handler implements
         SsRcvdObserver, ConnectionStatusObserver,
-        AuthStatusObserver, FpsUpdater, KeyboardInputHandler {
+        AuthStatusObserver, KeyboardInputHandler {
     private ImageViewer iv;
     private final MessageSender messageSender;
     private final AppCompatActivity activity;
     private final AuthHandler authHandler;
     private Menu menu;
-    private MenuItem fpsBox = null;
     private final KeyboardController keyboardController;
     private final HashMap<KeyboardModifier, MenuItem> menuViews;
     private final HashMap<KeyboardModifier, String> constantNames;
+    private final FpsUpdater fpsUpdater;
 
-    public MainUIHandler(MessageSender messageSender, AppCompatActivity activity) {
+    public MainUIHandler(MessageSender messageSender, FpsUpdater fpsUpdater, AppCompatActivity activity) {
         this.messageSender = messageSender;
         this.activity = activity;
         this.menuViews = new HashMap<>();
@@ -59,6 +59,7 @@ public class MainUIHandler extends Handler implements
         EditText textInput = activity.findViewById(R.id.keyboardInput);
         keyboardController = new KeyboardController(this, textInput);
 
+        this.fpsUpdater = fpsUpdater;
 
         ImageView imageView = createImageView();
         initImageViewer(imageView);
@@ -130,6 +131,7 @@ public class MainUIHandler extends Handler implements
             case CONNECTION_LOST:
                 Toast.makeText(activity, "Connection Lost.", Toast.LENGTH_LONG).show();
                 hidePilotView();
+                fpsUpdater.stop();
                 authHandler.connectionLost();
                 setDefaultMenuOptions();
                 break;
@@ -139,26 +141,16 @@ public class MainUIHandler extends Handler implements
             case AUTH_STATUS:
                 if ((Boolean)msg.obj) {
                     showPilotView();
+                    fpsUpdater.start(menu.findItem(R.id.fpsValue));
                     authHandler.authSucceeded();
                 }
                 else
                     authHandler.authFailed();
                 // failed auth is handled is AuthHandler
                 break;
-            case UPDATE_FPS:
-                if (fpsBox != null)
-                    fpsBox.setTitle("FPS: " + msg.obj);
-                else if(menu != null)
-                    try {
-                        fpsBox = menu.findItem(R.id.fpsValue);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                break;
             default:
                 throw new RuntimeException("Got unexpected code " + code);
         }
-
     }
 
     @Override
@@ -236,11 +228,6 @@ public class MainUIHandler extends Handler implements
                 R.id.muteBtn
         };
         Arrays.stream(items).forEach(id -> menu.findItem(id).setVisible(!hidden));
-    }
-
-    @Override
-    public void updateFPS(int fps) {
-        sendThreadMessage(UIMsgCode.UPDATE_FPS, fps);
     }
 
     @Override

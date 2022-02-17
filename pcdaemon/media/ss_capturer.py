@@ -11,8 +11,7 @@ from threading import Lock
 
 class SSCapturer:
     def __init__(self, top: int = 0, left: int = 0,
-                 #  widht: int = 840, height: int = 800,
-                 widht: int = 200, height: int = 200,
+                 widht: int = 840, height: int = 800,
                  screen_num: int = 2):
         self.DEFAULT_WIDTH, self.DEFAULT_HEIGHT = widht, height
 

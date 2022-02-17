@@ -1,6 +1,7 @@
 import socket
 import atexit
 import traceback
+import base64
 from pathlib import Path
 from dotenv import dotenv_values
 from typing import List
@@ -8,7 +9,9 @@ from media.sound_capturer import SoundCapturer
 from networking.media_handler import MediaHandler
 from networking.abstract.sender import Sender
 from networking.abstract.msg_handler import MsgHandler
+from security.UDPGuard import UDPGuard
 from security.asymmetric_security_handler import RSA_AsymmetricSecurityHandler
+from security.key_generator import KeyGenerator
 from security.message_security_preprocessor import MessageSecurityPreprocessor
 from security.session import Session
 from security.session_handler import SessionHandler
@@ -32,17 +35,17 @@ class Server(Sender, AuthStateObserver):
     # more is probably pointless and not supported now (and likely never)
     _MAX_CONNECTIONS = 1
 
-    def __init__(self, addr: str, tcp_port: int, udp_port: int,
+    def __init__(self, addr: str, tcp_port: int,
                  auth: Authenticator, msg_handler: MsgHandler,
                  tls_handler: TLSHandler, session_handler: SessionHandler,
-                 sender: MessageSender, listener: MessageListener):
+                 sender: MessageSender, listener: MessageListener, media_handler: MediaHandler):
         self._PORT = tcp_port
         self._IP_ADDR = addr
         self.auth = auth
         self.streamer = None
         self.msg_handler = msg_handler
         self.session_handler = session_handler
-        self.media_handler = MediaHandler(udp_port, addr)  # TODO
+        self.media_handler = media_handler
         self.tls_handler = tls_handler
         self.sender = sender
         self.listener = listener
@@ -82,6 +85,8 @@ class Server(Sender, AuthStateObserver):
         print("ok secure channel estb")
         self.auth.await_authentication(session)
         print("OK auth estb")
+        self.send_media_secret_key(session)
+        print("Media secret key sent")
         self.msg_handler.add_conn_state_obs(self.streamer)
         self.streamer.stream()
 
@@ -105,6 +110,11 @@ class Server(Sender, AuthStateObserver):
     def auth_failed(self, session: Session):
         self.sender.send_json(MsgCode.AUTH_CHECKED, {'is_granted': False})
 
+    def send_media_secret_key(self, session: Session):
+        key = session.get_udp_secret_key()
+        encoded_key = base64.b64encode(key).decode('utf-8')
+        self.sender.send_json(MsgCode.UDP_SECRET, {'secret': encoded_key})
+
 
 def main():
     # TODO IOC
@@ -119,8 +129,10 @@ def main():
         Path(config["PRIVATE_KEY_PATH"]))
 
     tcp_guard = TCPGuard()
+    udp_guard = UDPGuard()
 
     tcp_preprocessor = MessageSecurityPreprocessor(tcp_guard)
+    udp_preprocessor = MessageSecurityPreprocessor(udp_guard)
 
     session_handler = SessionHandler()
     tls_handler = TLSHandler(
@@ -134,8 +146,14 @@ def main():
     sound_capturer = SoundCapturer(
         config['MUTE_ON_START'] == 'false', *sound_args)
 
-    server = Server(config['IP_ADDR'], int(config['TCP_PORT']), int(
-        config['UDP_PORT']), auth, msg_handler, tls_handler, session_handler, sender, listener)
+    ip_addr = config['IP_ADDR']
+    tcp_port = int(config['TCP_PORT'])
+    udp_port = int(config['UDP_PORT'])
+
+    media_handler = MediaHandler(ip_addr, udp_port, udp_preprocessor)
+
+    server = Server(ip_addr, tcp_port, auth, msg_handler,
+                    tls_handler, session_handler, sender, listener, media_handler)
     streamer = Streamer(server, ss_capturer, sound_capturer,
                         max_fps=int(config['MAX_FPS']))
 

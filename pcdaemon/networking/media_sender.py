@@ -1,6 +1,8 @@
 from struct import pack
 from socket import socket
 from typing import Generator
+from security.message_security_preprocessor import MessageSecurityPreprocessor
+from security.session import Session
 from utils.media_msg_codes import MediaMsgCode
 
 """
@@ -22,14 +24,13 @@ from utils.media_msg_codes import MediaMsgCode
 class DataSender:
     _PACKET_FORMAT = '>bxxxIII'
 
-    def __init__(self, udp_sock: socket, peer_port: int, peer_ip: str, max_data_size: int = 1440):
-        self.sock = udp_sock
-        self.port = peer_port
-        self.peer_ip = peer_ip
+    def __init__(self, session: Session, msg_security_preproc: MessageSecurityPreprocessor, max_data_size: int = 1440):
+        self.session = session
+        self.msg_preproc = msg_security_preproc
 
         self.max_data_size = max_data_size
 
-        # probably no need to randomize seq's as in tcp since all communication should be encrypted either way
+        # probably no need to randomize seq's like in tcp since all communication should be encrypted either way
         self.audio_frame_seq = 0
         self.video_frame_seq = 0
 
@@ -45,7 +46,11 @@ class DataSender:
 
     def _send_fragmented(self, media_code: MediaMsgCode, media_frame: bytes, seq_num: int):
         for fragment in self._build_media_packets(media_code, media_frame, seq_num):
-            self.sock.sendto(fragment, (self.peer_ip, self.port))
+            encrypted_fragment = self.msg_preproc.preprocess_to_send(
+                self.session, fragment)
+
+            self.session.get_udp_socket().sendto(
+                encrypted_fragment, self.session.get_udp_peer_addr())
 
     def _build_media_packets(self, media_code: MediaMsgCode, media_frame: bytes, seq_num: int) -> Generator[bytes, None, None]:
         code = media_code.value
@@ -57,8 +62,5 @@ class DataSender:
 
             data = media_frame[offset: offset +
                                self.max_data_size]
-
-            print(
-                f"created fragment: {len(media_frame)} {code}, {size}, {seq_num}")
 
             yield header + data

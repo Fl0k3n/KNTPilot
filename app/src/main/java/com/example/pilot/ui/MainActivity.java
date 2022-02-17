@@ -14,6 +14,7 @@ import com.example.pilot.networking.tcp.Listener;
 import com.example.pilot.networking.udp.MediaReceiver;
 import com.example.pilot.networking.tcp.MessageReceiver;
 import com.example.pilot.networking.tcp.Sender;
+import com.example.pilot.security.UDPGuard;
 import com.example.pilot.security.certificate.CertificateVerifier;
 import com.example.pilot.security.MessageSecurityPreprocessor;
 import com.example.pilot.security.TCPGuard;
@@ -21,6 +22,7 @@ import com.example.pilot.security.TLSHandler;
 import com.example.pilot.ui.events.ImageScaleListener;
 import com.example.pilot.networking.udp.MediaStreamHandler;
 import com.example.pilot.ui.utils.FPSCounter;
+import com.example.pilot.ui.utils.FpsUpdater;
 import com.example.pilot.ui.utils.GuiRunner;
 import com.example.pilot.ui.utils.SoundPlayer;
 import com.example.pilot.ui.utils.VideoPlayer;
@@ -39,6 +41,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
+import java.util.concurrent.TimeUnit;
 
 
 public class MainActivity extends AppCompatActivity implements GuiRunner {
@@ -56,6 +59,7 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
     private Listener listener;
     private VideoPlayer videoPlayer;
     private MediaStreamHandler videoStreamHandler;
+    private FPSCounter fpsCounter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,8 +75,10 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
         File CAKeyFile = new File(this.getFilesDir(), preferencesLoader.getCAPublicKeyPath());
 
         TCPGuard tcpGuard = null;
+        UDPGuard udpGuard = null;
         try {
             tcpGuard = new TCPGuard();
+            udpGuard = new UDPGuard();
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
             return;
@@ -81,24 +87,31 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
         TLSHandler tlsHandler = new TLSHandler(certificateVerifier, tcpGuard);
 
         MessageSecurityPreprocessor tcpPreprocessor = new MessageSecurityPreprocessor(tcpGuard);
+        MessageSecurityPreprocessor udpPreprocessor = new MessageSecurityPreprocessor(udpGuard);
 
-        messageReceiver = new MessageReceiver();
+        fpsCounter = new FPSCounter(30);
+        FpsUpdater fpsUpdater = new FpsUpdater(this, fpsCounter, 250, TimeUnit.MILLISECONDS);
+
+        mediaReceiver = new MediaReceiver(preferencesLoader.getPort(), udpPreprocessor);
+
+
         sender = new Sender(tcpPreprocessor);
         listener = new Listener(tcpPreprocessor);
         connectionHandler = new ConnectionHandler(preferencesLoader.getIPAddr(), preferencesLoader.getPort(), tlsHandler, listener);
         messageSender = new MessageSender(sender);
-        uiHandler = new MainUIHandler(messageSender, this);
+        uiHandler = new MainUIHandler(messageSender, fpsUpdater, this);
         settingsHandler = new SettingsHandler(this);
 
+        messageReceiver = new MessageReceiver(mediaReceiver, messageSender);
+
         soundPlayer = new SoundPlayer();
-        videoPlayer = new VideoPlayer(this, uiHandler.getImageViewer(), 30);
+        videoPlayer = new VideoPlayer(this, uiHandler.getImageViewer(), fpsCounter, 30);
 
         // TODO args from somewhere
 
         audioStreamHandler = new MediaStreamHandler(soundPlayer, 256);
-        videoStreamHandler = new MediaStreamHandler(videoPlayer, 256);
+        videoStreamHandler = new MediaStreamHandler(videoPlayer, 512);
 
-        mediaReceiver = new MediaReceiver(preferencesLoader.getPort());
 
         mediaReceiver.addMediaStreamHandler(audioStreamHandler, false);
         mediaReceiver.addMediaStreamHandler(videoStreamHandler, true);
@@ -117,13 +130,6 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
 
         Thread network = new Thread(connectionHandler);
         network.start();
-
-        FPSCounter fpsCounter = new FPSCounter(uiHandler);
-        videoPlayer.addSSRcvdObserver(fpsCounter);
-        messageReceiver.addSSRcvdObserver(fpsCounter);
-
-        Thread timer = new Thread(fpsCounter);
-        timer.start();
 
         Thread soundThread = new Thread(soundPlayer);
         soundThread.start();

@@ -52,6 +52,9 @@ class StreamMsgHandler(MsgHandler, ConnectionStateObserver):
             self.streamer.mute_sound()
         elif code == MsgCode.UNMUTE:
             self.streamer.unmute_sound()
+        elif code == MsgCode.UDP_SECRET_ACK:
+            print("GOT ACK")
+            self.streamer.secure_channel_established()
         else:
             raise RuntimeError(
                 f'Received unsupported msg code {code} with data\n{data}')

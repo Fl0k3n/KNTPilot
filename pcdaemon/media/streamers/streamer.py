@@ -1,4 +1,5 @@
 from socket import socket
+import threading
 from typing import Iterable
 import atexit
 from networking.abstract.conn_state_obs import ConnectionStateObserver
@@ -29,13 +30,39 @@ class Streamer(ConnectionStateObserver):
 
         atexit.register(self.stop_streaming)
 
+        self.keep_streaming = False
+
+        self.secure_channel_estb = False
+        self.secure_channel_lock = threading.Lock()
+        self.secure_channel_cond = threading.Condition(
+            self.secure_channel_lock)
+
+    def secure_channel_established(self):
+        with self.secure_channel_lock:
+            self.secure_channel_estb = True
+            self.secure_channel_cond.notify_all()
+
     def stop_streaming(self):
+        with self.secure_channel_lock:
+            self.keep_streaming = False
+            self.secure_channel_cond.notify_all()
+
         self.video_streamer.stop_streaming()
         self.sound_streamer.stop_streaming()
 
     def stream(self):
+        self.keep_streaming = True
+
+        with self.secure_channel_lock:
+            while not self.secure_channel_estb:
+                self.secure_channel_cond.wait()
+                if not self.keep_streaming:
+                    return
+
+        print("starting streaming")
         self.sound_streamer.stream_sound()
-        self.video_streamer.stream_video()  # blocking, video is streamed from main thread
+        # blocking, video is streamed from main thread TODO
+        self.video_streamer.stream_video()
 
     def move_screen(self, dx: int, dy: int):
         self.ss_capturer.move_screen(dx, dy)

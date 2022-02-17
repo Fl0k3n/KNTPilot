@@ -5,6 +5,7 @@ import android.util.Pair;
 import com.example.pilot.networking.observers.AuthStatusObserver;
 import com.example.pilot.networking.observers.MessageRcvdObserver;
 import com.example.pilot.networking.observers.SsRcvdObserver;
+import com.example.pilot.networking.udp.MediaReceiver;
 import com.example.pilot.utils.ScreenShot;
 
 import org.json.JSONException;
@@ -16,8 +17,12 @@ import java.util.LinkedList;
 public class MessageReceiver implements MessageRcvdObserver {
     private final LinkedList<SsRcvdObserver> ssRcvdObservers;
     private final LinkedList<AuthStatusObserver> authStatusObservers;
+    private final MediaReceiver mediaReceiver;
+    private final MessageSender messageSender;
 
-    public MessageReceiver() {
+    public MessageReceiver(MediaReceiver mediaReceiver, MessageSender messageSender) {
+        this.mediaReceiver = mediaReceiver;
+        this.messageSender = messageSender;
         this.ssRcvdObservers = new LinkedList<>();
         this.authStatusObservers = new LinkedList<>();
     }
@@ -65,9 +70,17 @@ public class MessageReceiver implements MessageRcvdObserver {
                         AuthStatusObserver::authFailed);
 
                 break;
+            case UDP_SECRET:
+                handleUdpSecret(value);
+                break;
             default:
                 throw new RuntimeException("Rcvd unsupported msg code " + code); // TODO
         }
+    }
 
+    private void handleUdpSecret(JSONObject value) throws JSONException {
+        byte[] decoded = Base64.getDecoder().decode(value.getString("secret"));
+        mediaReceiver.setMediaTransportKey(decoded);
+        messageSender.sendMediaSecretChannelAck();
     }
 }

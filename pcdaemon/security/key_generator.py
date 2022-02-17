@@ -49,3 +49,7 @@ class KeyGenerator:
     def _assert_rsa_filename(cls, filename: str):
         assert filename.endswith(cls.RSA_KEY_FORMAT.lower(
         )), f"only {cls.RSA_KEY_FORMAT} files are supported"
+
+    @staticmethod
+    def generate_secret_key(length_bytes: int) -> bytes:
+        return get_random_bytes(length_bytes)
