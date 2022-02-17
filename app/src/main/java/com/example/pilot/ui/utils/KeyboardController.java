@@ -25,10 +25,20 @@ public class KeyboardController {
         this.textStart = 0;
 
         modes = new HashMap<>();
+
+        setupKeyboardModifiers();
+        setupKeyboardInputListener();
+    }
+
+    private void setupKeyboardModifiers() {
         KeyboardModifier[] codes = {KeyboardModifier.ALT_KEY,
                 KeyboardModifier.CTRL_KEY, KeyboardModifier.SHIFT_KEY};
         Arrays.stream(codes).forEach(code -> modes.put(code, false));
 
+    }
+
+
+    private void setupKeyboardInputListener() {
         keyboard.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {

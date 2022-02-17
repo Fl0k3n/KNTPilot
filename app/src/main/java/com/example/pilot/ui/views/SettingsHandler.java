@@ -9,6 +9,7 @@ import java.util.Locale;
 public class SettingsHandler {
     private AppCompatActivity activity;
     private EditText ipAddrInput, portNumberInput;
+
     public SettingsHandler(AppCompatActivity activity) {
         this.activity = activity;
         ipAddrInput = this.activity.findViewById(R.id.ipAddrInput);

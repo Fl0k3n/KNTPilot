@@ -63,7 +63,7 @@ public class Listener {
         while (true) {
             String rcvd = recvMessage(stream);
             synchronized (this) {
-                this.msgRcvdObservers.forEach(obs -> obs.msgRcvd(rcvd));
+                this.msgRcvdObservers.forEach(obs -> obs.onMessageReceived(rcvd));
             }
         }
     }

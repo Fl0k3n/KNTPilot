@@ -45,6 +45,7 @@ class Streamer(ConnectionStateObserver):
     def stop_streaming(self):
         with self.secure_channel_lock:
             self.keep_streaming = False
+            self.secure_channel_estb = False
             self.secure_channel_cond.notify_all()
 
         self.video_streamer.stop_streaming()

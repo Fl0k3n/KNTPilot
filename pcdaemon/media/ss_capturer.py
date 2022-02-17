@@ -35,6 +35,9 @@ class SSCapturer:
                    "width": self.ss_witdth, "height": self.ss_height,
                    "mon":   self.sct.monitors[self.streamed_screen_num]}
 
+            print('capturing  ', mon)
+            print()
+
         # im = self.sct.grab(self.sct.monitors[1])
         im = self.sct.grab(mon)
 

@@ -10,4 +10,8 @@ public interface MediaPlayer {
     float getFrameTimeSpanMs();
 
     MediaCode getMediaType();
+
+    void stop();
+
+    void start();
 }

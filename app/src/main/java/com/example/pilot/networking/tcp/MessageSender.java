@@ -95,16 +95,6 @@ public class MessageSender implements AuthSender, SsRcvdObserver {
     }
 
 
-    // TODO remove it
-    public void sendSSRcvdMessage() {
-        try {
-            sender.enqueueJsonMessageRequest(buildStringMsg(MsgCode.SS_RCVD, ""));
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-    }
-
-
     @Override
     public void sendCredentials(String password) {
         try {

@@ -2,7 +2,7 @@ package com.example.pilot;
 
 import com.example.pilot.networking.udp.MediaFrame;
 import com.example.pilot.networking.udp.MediaFramesBuffer;
-import com.example.pilot.ui.utils.OverrunException;
+import com.example.pilot.networking.udp.OverrunException;
 
 import org.junit.Assert;
 import org.junit.Test;

@@ -6,8 +6,10 @@ public class FPSCounter {
     private final double alpha = 0.875;
     private final AtomicLong frameTimeApproxMs;
     private long lastUpdateTimestampMs;
+    private final int expected_fps;
 
     public FPSCounter(int expected_fps) {
+        this.expected_fps = expected_fps;
         this.frameTimeApproxMs = new AtomicLong(1 / expected_fps);// estimate perfect at init
         lastUpdateTimestampMs = -1;
     }
@@ -33,5 +35,9 @@ public class FPSCounter {
 
     public long getFrameTimeApproxMs() {
         return frameTimeApproxMs.get();
+    }
+
+    public void reset() {
+        frameTimeApproxMs.set(1 / expected_fps);
     }
 }

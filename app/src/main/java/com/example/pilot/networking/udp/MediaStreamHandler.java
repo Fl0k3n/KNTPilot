@@ -1,11 +1,15 @@
 package com.example.pilot.networking.udp;
 
 
+import androidx.annotation.GuardedBy;
+
 import com.example.pilot.ui.utils.MediaPlayer;
-import com.example.pilot.ui.utils.OverrunException;
 
 import java.util.LinkedList;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -19,15 +23,19 @@ public class MediaStreamHandler {
     private final int bufferPrefetchMs;
 
     private final int prefetchFrameAmount;
-    private volatile boolean prefetchMode;
-    private MediaFramesBuffer buffer;
-    private LinkedList<StreamSkippedObserver> streamSkippedObservers;
+
+    @GuardedBy("consumerLock") private boolean prefetchMode;
+    @GuardedBy("consumerLock") private MediaFramesBuffer buffer;
+
+    private final LinkedList<StreamSkippedObserver> streamSkippedObservers;
 
     private long recvStartedAt;
 
     private final ReentrantLock consumerLock;
     private final Condition consumerCond;
-    private Thread audioConsumerThread;
+
+    private final ExecutorService executorService;
+    private Future<?> mediaConsumer;
 
     public MediaStreamHandler(MediaPlayer mediaPlayer, int initialBufferPreFetchMs) {
         this.mediaPlayer = mediaPlayer;
@@ -39,11 +47,16 @@ public class MediaStreamHandler {
 
         this.streamSkippedObservers = new LinkedList<>();
 
+        this.executorService = Executors.newSingleThreadExecutor();
+
         prefetchFrameAmount = computePrefetchSize();
+        System.out.println("[" + getMediaType() + "] prefetch" + prefetchFrameAmount);
+    }
 
+    public void start() {
         restart();
-
-        initMediaConsumerThread();
+        mediaPlayer.start();
+        initMediaConsumer();
     }
 
     // shouldn't be used when stream is already running
@@ -55,10 +68,11 @@ public class MediaStreamHandler {
         return mediaPlayer.getMediaType();
     }
 
-    public void restart() {
+    private void restart() {
         try {
             consumerLock.lock();
             prefetchMode = true;
+            mediaConsumer = null;
             restartBuffer();
             recvStartedAt = System.currentTimeMillis();
             consumerCond.signalAll();
@@ -68,39 +82,47 @@ public class MediaStreamHandler {
     }
 
     private void restartBuffer() {
-        buffer = new MediaFramesBuffer(4 * prefetchFrameAmount);
+        try {
+            consumerLock.lock();
+            buffer = new MediaFramesBuffer(4 * prefetchFrameAmount);
+        } finally {
+            consumerLock.unlock();
+        }
     }
 
-    public synchronized void addMediaFrame(MediaFrame mediaFrame) {
-        while (true) {
-            try {
-                buffer.put(mediaFrame);
-                break;
-            } catch (OverrunException overrunException) {
-                System.out.println("[" + getMediaType() + "] " + overrunException.getMessage());
-                handleOverrun();
+    public void addMediaFrame(MediaFrame mediaFrame) throws InterruptedException {
+        try {
+            consumerLock.lockInterruptibly();
+
+            while (true) {
+                try {
+                    buffer.put(mediaFrame);
+                    break;
+                } catch (OverrunException overrunException) {
+                    System.out.println("[" + getMediaType() + "] " + overrunException.getMessage());
+                    handleOverrun();
+                }
             }
-        }
 
-        if (prefetchMode && shouldFinishPrefetch()) {
-            System.out.println("[" + getMediaType() + "] " + "Starting to play");
+            if (prefetchMode && shouldFinishPrefetch()) {
+                System.out.println("[" + getMediaType() + "] " + "Starting to play");
 
-            try {
-                consumerLock.lock();
                 prefetchMode = false;
                 consumerCond.signalAll();
-            } finally {
-                consumerLock.unlock();
             }
+        } finally {
+            consumerLock.unlock();
         }
     }
 
 
+    // caller should hold buffer lock
     private boolean shouldFinishPrefetch() {
         return buffer.getConsecutiveFilledSize() >= prefetchFrameAmount ||
                 System.currentTimeMillis() - recvStartedAt > bufferPrefetchMs * 1.5;
     }
 
+    // caller should hold buffer lock
     private void handleOverrun() {
         if (buffer.getFilledSize() < prefetchFrameAmount) {
             restart();
@@ -117,19 +139,22 @@ public class MediaStreamHandler {
         return (int)(bufferPrefetchMs / frameTimeSpanMs + 1);
     }
 
-    private void initMediaConsumerThread() {
-        audioConsumerThread = new Thread(() -> {
+    private void initMediaConsumer() {
+         mediaConsumer = executorService.submit(() -> {
+             System.out.println("[" + getMediaType() + "] " +" Consumer started");
             while (true) {
                 try {
+                    Optional<MediaFrame> mediaFrame;
+
                     try {
-                        consumerLock.lock();
+                        consumerLock.lockInterruptibly();
                         while (prefetchMode)
                             consumerCond.await();
+
+                        mediaFrame = fetchNextMediaFrame();
                     } finally {
                         consumerLock.unlock();
                     }
-
-                    Optional<MediaFrame> mediaFrame = fetchNextMediaFrame();
 
                     if (mediaFrame.isPresent()) {
                         mediaPlayer.enqueueMediaFrame(mediaFrame.get());
@@ -143,12 +168,10 @@ public class MediaStreamHandler {
                 }
             }
         });
-
-        audioConsumerThread.setDaemon(true);
-        audioConsumerThread.start();
     }
 
-    private synchronized Optional<MediaFrame> fetchNextMediaFrame() {
+    // caller should hold buffer lock
+    private Optional<MediaFrame> fetchNextMediaFrame() {
         if (buffer.getFilledSize() == 0) {
             prefetchMode = true;
             recvStartedAt = System.currentTimeMillis();
@@ -166,4 +189,24 @@ public class MediaStreamHandler {
         return Optional.of(mediaFrame);
     }
 
+    public void stop() {
+        try {
+            consumerLock.lock();
+            if (mediaConsumer != null) {
+                if (!mediaConsumer.cancel(true)){
+                    System.out.println("[" + getMediaType() + "] " + "Failed to cancel media consumer");
+                }
+                System.out.println("*****************************************");
+                System.out.println("[" + getMediaType() + "] " +"consumer CANCELED");
+                System.out.println("*****************************************");
+                mediaConsumer = null;
+            }
+
+            mediaPlayer.stop();
+            restartBuffer();
+        } finally {
+            consumerLock.unlock();
+        }
+
+    }
 }

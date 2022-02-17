@@ -7,6 +7,7 @@ import com.example.pilot.security.TLSHandler;
 import java.net.*;
 import java.io.*;
 import java.util.LinkedList;
+import java.util.concurrent.ExecutorService;
 
 public class ConnectionHandler implements Runnable {
     private final static long DEFAULT_RECONNECT_TIMEOUT_MILLIS = 500;
@@ -22,10 +23,11 @@ public class ConnectionHandler implements Runnable {
     private final TLSHandler tlsHandler;
 
     private final LinkedList<ConnectionStatusObserver> connectionStatusObservers;
-
     private final Listener listener;
 
-    public ConnectionHandler(String ipAddr, int port, TLSHandler tlsHandler, Listener listener) {
+    private final ExecutorService executorService;
+
+    public ConnectionHandler(String ipAddr, int port, TLSHandler tlsHandler, Listener listener, ExecutorService executorService) {
         this.port = port;
         this.ipAddr = ipAddr;
         this.tlsHandler = tlsHandler;
@@ -33,6 +35,7 @@ public class ConnectionHandler implements Runnable {
         this.connectionStatusObservers = new LinkedList<>();
         this.isConnected = false;
         this.listener = listener;
+        this.executorService = executorService;
     }
 
     public synchronized void setConnectionParams(String ipAddr, int port) {
@@ -43,6 +46,10 @@ public class ConnectionHandler implements Runnable {
 
     public synchronized void addConnectionStatusObserver(ConnectionStatusObserver obs) {
         connectionStatusObservers.add(obs);
+    }
+
+    public void establishConnection() {
+        executorService.submit(this);
     }
 
     @Override

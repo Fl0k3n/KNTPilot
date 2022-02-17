@@ -1,8 +1,6 @@
 package com.example.pilot.ui.views;
 
 import android.content.Context;
-import android.os.Handler;
-import android.os.Message;
 import android.util.DisplayMetrics;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -17,17 +15,16 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.pilot.R;
+import com.example.pilot.networking.udp.MediaStreamHandler;
 import com.example.pilot.ui.utils.FpsUpdater;
+import com.example.pilot.ui.utils.GuiRunner;
 import com.example.pilot.ui.utils.KeyboardController;
-import com.example.pilot.ui.utils.UIMsgCode;
 import com.example.pilot.ui.utils.KeyboardInputHandler;
 import com.example.pilot.utils.KeyboardModifier;
 import com.example.pilot.networking.tcp.MessageSender;
 import com.example.pilot.utils.SpecialKeyCode;
-import com.example.pilot.networking.observers.SsRcvdObserver;
 import com.example.pilot.networking.observers.AuthStatusObserver;
 import com.example.pilot.networking.observers.ConnectionStatusObserver;
-import com.example.pilot.utils.ScreenShot;
 
 import java.net.Socket;
 import java.util.Arrays;
@@ -35,10 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 
 
-public class MainUIHandler extends Handler implements
-        SsRcvdObserver, ConnectionStatusObserver,
-        AuthStatusObserver, KeyboardInputHandler {
-    private ImageViewer iv;
+public class MainUIHandler implements ConnectionStatusObserver, AuthStatusObserver, KeyboardInputHandler {
     private final MessageSender messageSender;
     private final AppCompatActivity activity;
     private final AuthHandler authHandler;
@@ -47,10 +41,18 @@ public class MainUIHandler extends Handler implements
     private final HashMap<KeyboardModifier, MenuItem> menuViews;
     private final HashMap<KeyboardModifier, String> constantNames;
     private final FpsUpdater fpsUpdater;
+    private final GuiRunner guiRunner;
+    private final MediaStreamHandler videoStreamHandler;
+    private final MediaStreamHandler audioStreamHandler;
 
-    public MainUIHandler(MessageSender messageSender, FpsUpdater fpsUpdater, AppCompatActivity activity) {
+
+    public MainUIHandler(MessageSender messageSender, FpsUpdater fpsUpdater, AppCompatActivity activity,
+                         GuiRunner guiRunner, MediaStreamHandler videoStreamHandler, MediaStreamHandler audioStreamHandler) {
         this.messageSender = messageSender;
         this.activity = activity;
+        this.guiRunner = guiRunner;
+        this.videoStreamHandler = videoStreamHandler;
+        this.audioStreamHandler = audioStreamHandler;
         this.menuViews = new HashMap<>();
         this.constantNames = new HashMap<>();
 
@@ -60,14 +62,8 @@ public class MainUIHandler extends Handler implements
         keyboardController = new KeyboardController(this, textInput);
 
         this.fpsUpdater = fpsUpdater;
-
-        ImageView imageView = createImageView();
-        initImageViewer(imageView);
     }
 
-    public ImageViewer getImageViewer() {
-        return iv;
-    }
 
     public void setMenu(Menu menu) {
         this.menu = menu;
@@ -81,117 +77,51 @@ public class MainUIHandler extends Handler implements
         }
     }
 
-    private ImageView createImageView() {
-        DisplayMetrics displayMetrics = new DisplayMetrics();
-        activity.getWindowManager().getDefaultDisplay().getRealMetrics(displayMetrics);
 
-        RelativeLayout relativeLayout = activity.findViewById(R.id.top_rel_layout);
-
-        ImageView imageView = new ImageView(activity);
-        imageView.setScaleType(ImageView.ScaleType.FIT_XY);
-
-        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
-                displayMetrics.widthPixels, (int)(displayMetrics.heightPixels * 0.53));
-        params.leftMargin = 0;
-        params.topMargin = 0;
-
-        relativeLayout.addView(imageView, params);
-
-        return imageView;
+    private void showToast(String msg, int toastLength) {
+        Toast.makeText(activity, msg, toastLength).show();
     }
-
-    private void initImageViewer(ImageView imageView) {
-        iv = new ImageViewer(activity, imageView) {
-            @Override
-            public void onSwipe(float real_dx, float real_dy) {
-                messageSender.sendSwipeMessage(real_dx, real_dy);
-            }
-
-            @Override
-            public void onClick(float x, float y) {
-                messageSender.sendClickMessage(x, y);
-            }
-        };
-    }
-
-
-    @Override
-    public void handleMessage(Message msg) {
-        // receives msges from itself but in different thread,
-        // this code will be run in main thread and is able to touch gui
-        UIMsgCode code = UIMsgCode.fromInteger(msg.what);
-
-        switch(code) {
-            case UPDATE_IMAGE:
-                this.iv.updateImage((ScreenShot)msg.obj);
-                break;
-            case FAILED_TO_CONNECT:
-                Toast.makeText(activity, "Failed To Connect. " + msg.obj, Toast.LENGTH_SHORT).show();
-                break;
-            case CONNECTION_LOST:
-                Toast.makeText(activity, "Connection Lost.", Toast.LENGTH_LONG).show();
-                hidePilotView();
-                fpsUpdater.stop();
-                authHandler.connectionLost();
-                setDefaultMenuOptions();
-                break;
-            case CONNECTION_ESTB:
-                authHandler.connectionEstablished();;
-                break;
-            case AUTH_STATUS:
-                if ((Boolean)msg.obj) {
-                    showPilotView();
-                    fpsUpdater.start(menu.findItem(R.id.fpsValue));
-                    authHandler.authSucceeded();
-                }
-                else
-                    authHandler.authFailed();
-                // failed auth is handled is AuthHandler
-                break;
-            default:
-                throw new RuntimeException("Got unexpected code " + code);
-        }
-    }
-
-    @Override
-    public void onScreenShotRcvd(ScreenShot ss) {
-        sendThreadMessage(UIMsgCode.UPDATE_IMAGE, ss);
-        this.messageSender.sendSSRcvdMessage();
-    }
-
 
     @Override
     public void failedToConnect(String errorMsg) {
-        sendThreadMessage(UIMsgCode.FAILED_TO_CONNECT, errorMsg);
+        guiRunner.scheduleGuiTask(() -> showToast("Failed To Connect.\n" + errorMsg, Toast.LENGTH_SHORT));
     }
 
     @Override
     public void connectionEstablished(Socket socket) {
-        sendThreadMessage(UIMsgCode.CONNECTION_ESTB, null);
+        guiRunner.scheduleGuiTask(authHandler::connectionEstablished);
     }
 
     @Override
     public void connectionLost(Socket socket) {
-        sendThreadMessage(UIMsgCode.CONNECTION_LOST, null);
+        videoStreamHandler.stop();
+        audioStreamHandler.stop();
+
+        guiRunner.scheduleGuiTask(() -> {
+            showToast("Connection Lost.", Toast.LENGTH_LONG);
+            hidePilotView();
+            fpsUpdater.stop();
+            authHandler.connectionLost();
+            setDefaultMenuOptions();
+        });
     }
 
-
-    private void sendThreadMessage(UIMsgCode code, Object val) {
-        Message msg = new Message();
-        msg.what = code.ordinal();
-        msg.obj = val;
-        this.sendMessage(msg);
-    }
 
     @Override
     public void authSucceeded() {
-        sendThreadMessage(UIMsgCode.AUTH_STATUS, true);
+        videoStreamHandler.start();
+
+        guiRunner.scheduleGuiTask(() -> {
+            showPilotView();
+            fpsUpdater.start(menu.findItem(R.id.fpsValue));
+            authHandler.authSucceeded();
+        });
     }
 
 
     @Override
     public void authFailed() {
-        sendThreadMessage(UIMsgCode.AUTH_STATUS, false);
+        guiRunner.scheduleGuiTask(authHandler::authFailed);
     }
 
     private void showPilotView() {

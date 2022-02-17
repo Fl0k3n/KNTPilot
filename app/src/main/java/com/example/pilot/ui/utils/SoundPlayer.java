@@ -5,22 +5,31 @@ import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 
+import androidx.annotation.GuardedBy;
+
 import com.example.pilot.networking.observers.ConnectionStatusObserver;
 import com.example.pilot.networking.udp.MediaCode;
 import com.example.pilot.networking.udp.MediaFrame;
 
 import java.net.Socket;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class SoundPlayer implements MediaPlayer, ConnectionStatusObserver, Runnable {
+public class SoundPlayer implements MediaPlayer {
     private static final int QUEUE_CAPACITY = 1;
     private final BlockingQueue<MediaFrame> buffer;
-    private final AudioTrack audioTrack;
+    @GuardedBy("this") private final AudioTrack audioTrack;
+
     private boolean muted;
     private final int sampleRate;
     private final int samplesInSingleFrame;
+
+    private final ExecutorService executorService;
+    private Future<?> playerTask;
 
     public SoundPlayer() {
         this(true, 44100, 384, 256);
@@ -31,6 +40,7 @@ public class SoundPlayer implements MediaPlayer, ConnectionStatusObserver, Runna
         this.sampleRate = sampleRate;
         this.samplesInSingleFrame = samplesInSingleFrame;
         buffer = new LinkedBlockingQueue<>(QUEUE_CAPACITY);
+        executorService = Executors.newSingleThreadExecutor();
 
         audioTrack = initAudioPlayer(internalBufferSize);
     }
@@ -64,40 +74,26 @@ public class SoundPlayer implements MediaPlayer, ConnectionStatusObserver, Runna
         audioTrack.flush();
     }
 
-
-    @Override
-    public void run() {
-        synchronized (this) {
-            audioTrack.flush();
-            audioTrack.play();
-        }
-
-        while (true) {
-            try {
-                MediaFrame frame = buffer.take();
-                byte[] bytes = frame.getBytes();
-                synchronized (this) {
-                    audioTrack.write(bytes, 0, bytes.length);
-                }
-            } catch (InterruptedException e) {
-                break;
+    private void initPlayerTask() {
+        playerTask = executorService.submit(() -> {
+            System.out.println("Sound player started");
+            synchronized (this) {
+                audioTrack.flush();
+                audioTrack.play();
             }
-        }
-    }
 
-    @Override
-    public void failedToConnect(String errorMsg) {
-        //pass
-    }
-
-    @Override
-    public void connectionEstablished(Socket socket) {
-        //pass
-    }
-
-    @Override
-    public void connectionLost(Socket socket) {
-        setMuted(true);
+            while (true) {
+                try {
+                    MediaFrame frame = buffer.take();
+                    byte[] bytes = frame.getBytes();
+                    synchronized (this) {
+                        audioTrack.write(bytes, 0, bytes.length);
+                    }
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        });
     }
 
     @Override
@@ -115,5 +111,23 @@ public class SoundPlayer implements MediaPlayer, ConnectionStatusObserver, Runna
     @Override
     public MediaCode getMediaType() {
         return MediaCode.AUDIO_FRAME;
+    }
+
+    @Override
+    public synchronized void stop() {
+        setMuted(true);
+        if (playerTask != null) {
+            if (playerTask.cancel(true)) {
+                System.out.println("Sound player stopped");
+            }
+            playerTask = null;
+        }
+
+    }
+
+    @Override
+    public synchronized void start() {
+        setMuted(false);
+        initPlayerTask();
     }
 }

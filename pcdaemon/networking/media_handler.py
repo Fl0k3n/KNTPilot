@@ -28,7 +28,6 @@ class MediaHandler(ConnectionStateObserver):
         self.data_sender = DataSender(session, self.msg_security_preproc)
 
     def connection_lost(self, session: Session):
-        session.get_udp_socket().close()
         self.data_sender = None
 
     def _setup_server_socket(self):

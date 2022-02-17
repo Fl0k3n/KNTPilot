@@ -1,5 +1,5 @@
 package com.example.pilot.networking.observers;
 
 public interface MessageRcvdObserver {
-    void msgRcvd(String jsonData);
+    void onMessageReceived(String jsonData);
 }

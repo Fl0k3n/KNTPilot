@@ -71,11 +71,12 @@ class FpsController:
 
     def wait_when_legal(self) -> float:
         """returns estimation of fps"""
+        time.sleep(self.min_frame_time)
 
-        if self.frame_time_approx > self.min_frame_time:
-            time.sleep(self.min_frame_time / 2)
-        else:
-            time.sleep(self.min_frame_time - (self.frame_time_approx / 2))
+        # if self.frame_time_approx > self.min_frame_time:
+        #     time.sleep(self.min_frame_time / 2)
+        # else:
+        #     time.sleep(self.min_frame_time - (self.frame_time_approx / 2))
 
         return 1.0 / self.frame_time_approx
 

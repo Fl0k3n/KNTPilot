@@ -4,12 +4,16 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
+import android.widget.ImageView;
+import android.widget.RelativeLayout;
 
 import com.example.pilot.R;
+import com.example.pilot.networking.observers.ConnectionStatusObserver;
 import com.example.pilot.networking.tcp.Listener;
 import com.example.pilot.networking.udp.MediaReceiver;
 import com.example.pilot.networking.tcp.MessageReceiver;
@@ -26,6 +30,7 @@ import com.example.pilot.ui.utils.FpsUpdater;
 import com.example.pilot.ui.utils.GuiRunner;
 import com.example.pilot.ui.utils.SoundPlayer;
 import com.example.pilot.ui.utils.VideoPlayer;
+import com.example.pilot.ui.views.ImageViewer;
 import com.example.pilot.ui.views.MainUIHandler;
 import com.example.pilot.ui.views.SettingsHandler;
 import com.example.pilot.utils.KeyboardModifier;
@@ -40,7 +45,9 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.Socket;
 import java.security.NoSuchAlgorithmException;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 
@@ -92,36 +99,37 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
         fpsCounter = new FPSCounter(30);
         FpsUpdater fpsUpdater = new FpsUpdater(this, fpsCounter, 250, TimeUnit.MILLISECONDS);
 
-        mediaReceiver = new MediaReceiver(preferencesLoader.getPort(), udpPreprocessor);
+        mediaReceiver = new MediaReceiver(preferencesLoader.getPort(), udpPreprocessor, Executors.newSingleThreadExecutor());
 
 
         sender = new Sender(tcpPreprocessor);
         listener = new Listener(tcpPreprocessor);
-        connectionHandler = new ConnectionHandler(preferencesLoader.getIPAddr(), preferencesLoader.getPort(), tlsHandler, listener);
+        connectionHandler = new ConnectionHandler(preferencesLoader.getIPAddr(), preferencesLoader.getPort(), tlsHandler,
+                listener, Executors.newSingleThreadExecutor());
         messageSender = new MessageSender(sender);
-        uiHandler = new MainUIHandler(messageSender, fpsUpdater, this);
         settingsHandler = new SettingsHandler(this);
 
         messageReceiver = new MessageReceiver(mediaReceiver, messageSender);
 
+        ImageViewer imageViewer = createImageViewer();
+
         soundPlayer = new SoundPlayer();
-        videoPlayer = new VideoPlayer(this, uiHandler.getImageViewer(), fpsCounter, 30);
+        videoPlayer = new VideoPlayer(this, imageViewer, fpsCounter, 30);
 
         // TODO args from somewhere
 
         audioStreamHandler = new MediaStreamHandler(soundPlayer, 256);
         videoStreamHandler = new MediaStreamHandler(videoPlayer, 512);
 
+        uiHandler = new MainUIHandler(messageSender, fpsUpdater, this, this, videoStreamHandler, audioStreamHandler);
 
         mediaReceiver.addMediaStreamHandler(audioStreamHandler, false);
         mediaReceiver.addMediaStreamHandler(videoStreamHandler, true);
 
         messageReceiver.addAuthStatusObserver(uiHandler);
-        messageReceiver.addSSRcvdObserver(uiHandler);
 
         connectionHandler.addConnectionStatusObserver(mediaReceiver);
         connectionHandler.addConnectionStatusObserver(uiHandler);
-        connectionHandler.addConnectionStatusObserver(soundPlayer);
         connectionHandler.addConnectionStatusObserver(sender);
 
         listener.addMsgRcvdObserver(messageReceiver);
@@ -130,12 +138,6 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
 
         Thread network = new Thread(connectionHandler);
         network.start();
-
-        Thread soundThread = new Thread(soundPlayer);
-        soundThread.start();
-
-        Thread videoThread = new Thread(videoPlayer);
-        videoThread.start();
     }
 
     @Override
@@ -176,10 +178,14 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
 
         menu.findItem(R.id.muteBtn).setOnMenuItemClickListener(e -> {
             boolean isMuted = soundPlayer.isMuted();
-            audioStreamHandler.restart(); // TODO
-            soundPlayer.setMuted(!isMuted);
             uiHandler.changeMuteIcon(!isMuted);
             messageSender.sendMuteMessage(!isMuted);
+
+            if (isMuted)
+                audioStreamHandler.start();
+            else
+                audioStreamHandler.stop();
+
             return true;
         });
 
@@ -224,6 +230,40 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
 
         settingsHandler.setDefaults(preferencesLoader.getIPAddr(), preferencesLoader.getPort());
     }
+
+    private ImageView createImageView() {
+        DisplayMetrics displayMetrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getRealMetrics(displayMetrics);
+
+        RelativeLayout relativeLayout = findViewById(R.id.top_rel_layout);
+
+        ImageView imageView = new ImageView(this);
+        imageView.setScaleType(ImageView.ScaleType.FIT_XY);
+
+        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
+                displayMetrics.widthPixels, (int)(displayMetrics.heightPixels * 0.53));
+        params.leftMargin = 0;
+        params.topMargin = 0;
+
+        relativeLayout.addView(imageView, params);
+
+        return imageView;
+    }
+
+    private ImageViewer createImageViewer() {
+        return new ImageViewer(this, createImageView()) {
+            @Override
+            public void onSwipe(float real_dx, float real_dy) {
+                messageSender.sendSwipeMessage(real_dx, real_dy);
+            }
+
+            @Override
+            public void onClick(float x, float y) {
+                messageSender.sendClickMessage(x, y);
+            }
+        };
+    }
+
 
     private boolean modifierHandler(KeyboardModifier modifier) {
         uiHandler.changeKeyboardModifier(modifier);

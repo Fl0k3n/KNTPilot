@@ -1,10 +1,9 @@
 package com.example.pilot.networking.udp;
 
-import java.net.DatagramPacket;
 import java.util.Optional;
 
 public class FragmentAssembler implements StreamSkippedObserver {
-    private final FragmentBuffer fragmentBuffer;
+    private FragmentBuffer fragmentBuffer;
     private final boolean requiresFragmentation;
 
     public FragmentAssembler(boolean requiresFragmentation) {
@@ -63,5 +62,9 @@ public class FragmentAssembler implements StreamSkippedObserver {
     @Override
     public void onSkippedTo(int seqNum) {
         fragmentBuffer.removePreceding(seqNum);
+    }
+
+    public void clearBuffer() {
+        this.fragmentBuffer = new FragmentBuffer();
     }
 }

@@ -8,9 +8,12 @@ import com.example.pilot.utils.ScreenShot;
 
 import java.util.LinkedList;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class VideoPlayer implements MediaPlayer, Runnable {
+public class VideoPlayer implements MediaPlayer {
     private static final int QUEUE_CAPACITY = 1;
 
     private final int max_fps;
@@ -20,7 +23,9 @@ public class VideoPlayer implements MediaPlayer, Runnable {
     private final BlockingQueue<MediaFrame> buffer;
     private final FPSCounter fpsCounter;
 
-    private LinkedList<SsRcvdObserver> ssRcvdObservers;
+    private final ExecutorService executorService;
+    private Future<?> playerTask;
+
 
     public VideoPlayer(GuiRunner guiRunner, ImageViewer imageViewer, FPSCounter fpsCounter, int max_fps) {
         this.guiRunner = guiRunner;
@@ -29,12 +34,7 @@ public class VideoPlayer implements MediaPlayer, Runnable {
         this.max_fps = max_fps;
         this.perfectFrameTimeMs = 1000 / max_fps;
         buffer = new LinkedBlockingQueue<>(QUEUE_CAPACITY);
-        ssRcvdObservers = new LinkedList<>();
-    }
-
-
-    public void addSSRcvdObserver(SsRcvdObserver ssRcvdObserver) {
-        this.ssRcvdObservers.add(ssRcvdObserver);
+        executorService = Executors.newSingleThreadExecutor();
     }
 
 
@@ -54,32 +54,52 @@ public class VideoPlayer implements MediaPlayer, Runnable {
     }
 
     @Override
-    public void run() {
-        try {
-            while (true) {
-                MediaFrame frame = buffer.take();
+    public synchronized void start() {
+        fpsCounter.reset();
+        initPlayerTask();
+    }
 
-                displayFrame(frame);
-
-                waitBeforeNextFrame();
+    @Override
+    public synchronized void stop() {
+        if (playerTask != null) {
+            if (playerTask.cancel(true)) {
+                System.out.println("Video player stopped");
             }
-        } catch (InterruptedException consumed) {
-            System.out.println("Video player interrupted, exiting");
+            playerTask = null;
         }
+
+        buffer.clear();
+    }
+
+    private void initPlayerTask() {
+        playerTask = executorService.submit(() -> {
+            System.out.println("Video player started");
+            try {
+                while (true) {
+                    MediaFrame frame = buffer.take();
+
+                    displayFrame(frame);
+
+                    waitBeforeNextFrame();
+                }
+            } catch (InterruptedException consumed) {
+                System.out.println("Video player interrupted, exiting");
+            }
+        });
     }
 
     private void displayFrame(MediaFrame mediaFrame) {
         final ScreenShot screenShot = new ScreenShot(mediaFrame.getBytes());
         guiRunner.scheduleGuiTask(() -> imageViewer.updateImage(screenShot));
         fpsCounter.onFrameDisplayed();
-        ssRcvdObservers.forEach(ssRcvdObserver -> ssRcvdObserver.onScreenShotRcvd(screenShot));
     }
 
     private void waitBeforeNextFrame() throws InterruptedException {
         long estimatedFrameTime = fpsCounter.getFrameTimeApproxMs();
-        if (estimatedFrameTime > perfectFrameTimeMs)
-            Thread.sleep(estimatedFrameTime - 3 * perfectFrameTimeMs / 4);
-        else
-            Thread.sleep(perfectFrameTimeMs / 2);
+        Thread.sleep(perfectFrameTimeMs);
+//        if (estimatedFrameTime > perfectFrameTimeMs)
+//            Thread.sleep(estimatedFrameTime - 3 * perfectFrameTimeMs / 4);
+//        else
+//            Thread.sleep(perfectFrameTimeMs / 2);
     }
 }

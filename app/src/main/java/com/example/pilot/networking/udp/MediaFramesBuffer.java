@@ -1,9 +1,6 @@
 package com.example.pilot.networking.udp;
 
 
-import com.example.pilot.networking.udp.MediaFrame;
-import com.example.pilot.ui.utils.OverrunException;
-
 /**
  * TCP window-alike class, designed for multimedia sent via UDP such that some frames can be missed
  * and some can be delivered more than once, out-of-order frames will be saved in appropriate buffer position,
