@@ -13,6 +13,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import javax.inject.Inject;
+import javax.inject.Named;
+
 public class KeyboardController {
     private final HashMap<KeyboardModifier, Boolean> modes;
     private final KeyboardInputHandler inputHandler;

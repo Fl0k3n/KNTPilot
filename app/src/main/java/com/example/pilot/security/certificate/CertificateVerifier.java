@@ -16,13 +16,17 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
+import javax.inject.Inject;
+import javax.inject.Named;
+
 public class CertificateVerifier {
     private static final String KEY_ALGORITHM = "RSA";
     private static final String SUPPORTED_KEY_ENCODING = "pem";
 
     private final File CAPublicKeyFile;
 
-    public CertificateVerifier(File CAPublicKeyFile) {
+    @Inject
+    public CertificateVerifier(@Named("CA public key file") File CAPublicKeyFile) {
         this.CAPublicKeyFile = CAPublicKeyFile;
 
         if (!CAPublicKeyFile.getName().endsWith(SUPPORTED_KEY_ENCODING))

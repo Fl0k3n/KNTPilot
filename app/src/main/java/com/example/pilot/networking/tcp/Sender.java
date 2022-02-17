@@ -12,6 +12,11 @@ import java.net.Socket;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.inject.Singleton;
+
+@Singleton
 public class Sender implements ConnectionStatusObserver {
     private static final int SEND_QUEUE_CAPACITY = 16;
 
@@ -20,7 +25,8 @@ public class Sender implements ConnectionStatusObserver {
 
     @GuardedBy("this") private Thread senderThread;
 
-    public Sender(MessageSecurityPreprocessor preprocessor) {
+    @Inject
+    public Sender(@Named("TCP preprocessor") MessageSecurityPreprocessor preprocessor) {
         this.jsonMessages = new LinkedBlockingQueue<>(SEND_QUEUE_CAPACITY);
         this.preprocessor = preprocessor;
     }

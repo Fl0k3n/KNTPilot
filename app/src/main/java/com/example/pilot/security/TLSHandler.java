@@ -16,6 +16,10 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.security.SecureRandom;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
+@Singleton
 public class TLSHandler {
     // RSA PKCS#1 OAEP, this should be negotiated, TODO
     private static final String SUBJECT_ASYMMETRIC_ENCRYPTION_ALGORITHM = "RSA/NONE/OAEPWithSHA1AndMGF1Padding";
@@ -25,6 +29,7 @@ public class TLSHandler {
     private final TCPGuard tcpGuard;
     private final CertificateVerifier certificateVerifier;
 
+    @Inject
     public TLSHandler(CertificateVerifier certificateVerifier, TCPGuard tcpGuard) {
         this.certificateVerifier = certificateVerifier;
         this.tcpGuard = tcpGuard;

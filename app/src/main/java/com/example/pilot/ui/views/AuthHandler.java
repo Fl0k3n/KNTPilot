@@ -11,13 +11,19 @@ import com.example.pilot.R;
 import com.example.pilot.networking.tcp.AuthSender;
 import com.example.pilot.networking.observers.AuthStatusObserver;
 
-public class AuthHandler implements AuthStatusObserver {
-    private AppCompatActivity activity;
-    private View layout;
-    private Button authBtn;
-    private EditText input;
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.inject.Singleton;
 
-    public AuthHandler(AppCompatActivity activity, AuthSender authSender) {
+@Singleton
+public class AuthHandler implements AuthStatusObserver {
+    private final AppCompatActivity activity;
+    private final View layout;
+    private final Button authBtn;
+    private final EditText input;
+
+    @Inject
+    public AuthHandler(@Named("auth activity") AppCompatActivity activity, AuthSender authSender) {
         this.activity = activity;
         this.layout = activity.findViewById(R.id.authLayout);
         this.input = activity.findViewById(R.id.AuthInput);

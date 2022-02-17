@@ -11,10 +11,15 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
 
+
+@Singleton
 public class MessageSender implements AuthSender, SsRcvdObserver {
     private final Sender sender;
 
+    @Inject
     public MessageSender(Sender sender) {
         this.sender = sender;
     }

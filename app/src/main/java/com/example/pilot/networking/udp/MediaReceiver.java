@@ -18,6 +18,9 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
+import javax.inject.Inject;
+import javax.inject.Named;
+
 public class MediaReceiver implements ConnectionStatusObserver {
     private final static String IP_ADDR = "0.0.0.0";
 
@@ -33,7 +36,12 @@ public class MediaReceiver implements ConnectionStatusObserver {
     private final ExecutorService executorService;
     private Future<?> receiverTask;
 
-    public MediaReceiver(int port, MessageSecurityPreprocessor securityPreprocessor, ExecutorService executorService) {
+
+    @Inject
+    public MediaReceiver(@Named("client udp port") int port,
+                         @Named("UDP preprocessor") MessageSecurityPreprocessor securityPreprocessor,
+                         @Named("receiver executor") ExecutorService executorService)
+    {
         this.port = port;
         this.securityPreprocessor = securityPreprocessor;
 

@@ -2,7 +2,9 @@ package com.example.pilot.ui;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.Application;
 import android.content.Context;
+import android.media.Image;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.view.Menu;
@@ -12,25 +14,19 @@ import android.view.ScaleGestureDetector;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 
+import com.example.pilot.IOC.DaggerAppComponent;
+import com.example.pilot.IOC.MediaModule;
+import com.example.pilot.IOC.NetworkingModule;
+import com.example.pilot.IOC.SecurityModule;
 import com.example.pilot.R;
-import com.example.pilot.networking.observers.ConnectionStatusObserver;
 import com.example.pilot.networking.tcp.Listener;
 import com.example.pilot.networking.udp.MediaReceiver;
 import com.example.pilot.networking.tcp.MessageReceiver;
 import com.example.pilot.networking.tcp.Sender;
-import com.example.pilot.security.UDPGuard;
-import com.example.pilot.security.certificate.CertificateVerifier;
-import com.example.pilot.security.MessageSecurityPreprocessor;
-import com.example.pilot.security.TCPGuard;
-import com.example.pilot.security.TLSHandler;
 import com.example.pilot.ui.events.ImageScaleListener;
 import com.example.pilot.networking.udp.MediaStreamHandler;
-import com.example.pilot.ui.utils.FPSCounter;
-import com.example.pilot.ui.utils.FpsUpdater;
 import com.example.pilot.ui.utils.GuiRunner;
 import com.example.pilot.ui.utils.SoundPlayer;
-import com.example.pilot.ui.utils.VideoPlayer;
-import com.example.pilot.ui.views.ImageViewer;
 import com.example.pilot.ui.views.MainUIHandler;
 import com.example.pilot.ui.views.SettingsHandler;
 import com.example.pilot.utils.KeyboardModifier;
@@ -41,91 +37,95 @@ import com.example.pilot.utils.commands.ChangeSettingsVisibilityCommand;
 import com.example.pilot.utils.PreferencesLoader;
 import com.example.pilot.utils.commands.UpdateSettingsCommand;
 
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.net.Socket;
-import java.security.NoSuchAlgorithmException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
+import javax.inject.Inject;
+import javax.inject.Named;
 
 public class MainActivity extends AppCompatActivity implements GuiRunner {
-    private MainUIHandler uiHandler;
-    private ConnectionHandler connectionHandler;
-    private MessageSender messageSender;
     private ScaleGestureDetector detector;
-    private SoundPlayer soundPlayer;
     private PreferencesLoader preferencesLoader;
-    private SettingsHandler settingsHandler;
-    private MediaStreamHandler audioStreamHandler;
-    private MediaReceiver mediaReceiver;
-    private MessageReceiver messageReceiver;
-    private Sender sender;
-    private Listener listener;
-    private VideoPlayer videoPlayer;
-    private MediaStreamHandler videoStreamHandler;
-    private FPSCounter fpsCounter;
+
+    @Inject
+    MainUIHandler uiHandler;
+
+    @Inject
+    ConnectionHandler connectionHandler;
+
+    @Inject @Named("video stream handler")
+    MediaStreamHandler videoStreamHandler;
+
+    @Inject @Named("audio stream handler")
+    MediaStreamHandler audioStreamHandler;
+
+    @Inject
+    MediaReceiver mediaReceiver;
+
+    @Inject
+    MessageReceiver messageReceiver;
+
+    @Inject
+    Sender sender;
+
+    @Inject
+    MessageSender messageSender;
+
+    @Inject
+    Listener listener;
+
+    @Inject
+    SettingsHandler settingsHandler;
+
+    @Inject
+    SoundPlayer soundPlayer;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        System.out.println("UP*****************************************");
         super.onCreate(savedInstanceState);
-
-        setContentView(R.layout.activity_main);
+        System.out.println("********UP********");
 
         preferencesLoader = new PreferencesLoader(this);
 
-        saveCAPublicKey(this, preferencesLoader.getCAPublicKeyPath());
+        setContentView(R.layout.activity_main);
 
-        File CAKeyFile = new File(this.getFilesDir(), preferencesLoader.getCAPublicKeyPath());
+        initIOCModules();
 
-        TCPGuard tcpGuard = null;
-        UDPGuard udpGuard = null;
-        try {
-            tcpGuard = new TCPGuard();
-            udpGuard = new UDPGuard();
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            return;
-        }
-        CertificateVerifier certificateVerifier = new CertificateVerifier(CAKeyFile);
-        TLSHandler tlsHandler = new TLSHandler(certificateVerifier, tcpGuard);
+        initMediaStreamHandlers();
 
-        MessageSecurityPreprocessor tcpPreprocessor = new MessageSecurityPreprocessor(tcpGuard);
-        MessageSecurityPreprocessor udpPreprocessor = new MessageSecurityPreprocessor(udpGuard);
+        initNetworkObservers();
 
-        fpsCounter = new FPSCounter(30);
-        FpsUpdater fpsUpdater = new FpsUpdater(this, fpsCounter, 250, TimeUnit.MILLISECONDS);
+        initScaleDetector();
 
-        mediaReceiver = new MediaReceiver(preferencesLoader.getPort(), udpPreprocessor, Executors.newSingleThreadExecutor());
+        connectionHandler.establishConnection();
+    }
 
+    private void initIOCModules() {
+        SecurityModule securityModule = new SecurityModule(this.getFilesDir(), preferencesLoader.getCAPublicKeyPath());
 
-        sender = new Sender(tcpPreprocessor);
-        listener = new Listener(tcpPreprocessor);
-        connectionHandler = new ConnectionHandler(preferencesLoader.getIPAddr(), preferencesLoader.getPort(), tlsHandler,
-                listener, Executors.newSingleThreadExecutor());
-        messageSender = new MessageSender(sender);
-        settingsHandler = new SettingsHandler(this);
+        ImageView imageView = createImageView();
 
-        messageReceiver = new MessageReceiver(mediaReceiver, messageSender);
+        MediaModule mediaModule = new MediaModule(this, imageView, this);
 
-        ImageViewer imageViewer = createImageViewer();
+        String serverIpAddr = preferencesLoader.getIPAddr();
+        int serverPort = preferencesLoader.getPort();
+        int clientMediaPort = serverPort;
 
-        soundPlayer = new SoundPlayer();
-        videoPlayer = new VideoPlayer(this, imageViewer, fpsCounter, 30);
+        NetworkingModule networkingModule = new NetworkingModule(serverIpAddr, serverPort, clientMediaPort);
 
-        // TODO args from somewhere
+        DaggerAppComponent
+                .builder()
+                .securityModule(securityModule)
+                .mediaModule(mediaModule)
+                .networkingModule(networkingModule)
+                .build()
+                .inject(this);
+    }
 
-        audioStreamHandler = new MediaStreamHandler(soundPlayer, 256);
-        videoStreamHandler = new MediaStreamHandler(videoPlayer, 512);
-
-        uiHandler = new MainUIHandler(messageSender, fpsUpdater, this, this, videoStreamHandler, audioStreamHandler);
-
+    private void initMediaStreamHandlers() {
         mediaReceiver.addMediaStreamHandler(audioStreamHandler, false);
         mediaReceiver.addMediaStreamHandler(videoStreamHandler, true);
+    }
 
+    private void initNetworkObservers() {
         messageReceiver.addAuthStatusObserver(uiHandler);
 
         connectionHandler.addConnectionStatusObserver(mediaReceiver);
@@ -133,11 +133,6 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
         connectionHandler.addConnectionStatusObserver(sender);
 
         listener.addMsgRcvdObserver(messageReceiver);
-
-        initScaleDetector();
-
-        Thread network = new Thread(connectionHandler);
-        network.start();
     }
 
     @Override
@@ -199,7 +194,7 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
         menu.findItem(R.id.ShiftBtn)
                 .setOnMenuItemClickListener(e -> modifierHandler(KeyboardModifier.SHIFT_KEY));
 
-        setupSettings(menu);
+        settingsHandler.setupSettings(menu, connectionHandler, preferencesLoader);
 
         uiHandler.setMenu(menu);
         uiHandler.changeMenuItemsVisibility(true);
@@ -207,29 +202,6 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
         return super.onCreateOptionsMenu(menu);
     }
 
-    private void setupSettings(Menu menu) {
-        MenuItem settingsBtn = menu.findItem(R.id.settingsBtn);
-
-        ChangeSettingsVisibilityCommand closeCmd =
-                new ChangeSettingsVisibilityCommand(this, settingsBtn, true);
-        ChangeSettingsVisibilityCommand showCmd =
-                new ChangeSettingsVisibilityCommand(this, settingsBtn, false);
-        UpdateSettingsCommand updateCmd =
-                new UpdateSettingsCommand(connectionHandler, preferencesLoader, settingsHandler);
-
-        settingsHandler.setOnCloseSettingsCommand(closeCmd);
-        settingsHandler.setOnSaveSettingsCommand(() -> {
-            updateCmd.execute();
-            closeCmd.execute();
-        });
-
-        settingsBtn.setOnMenuItemClickListener(e -> {
-            showCmd.execute();
-            return true;
-        });
-
-        settingsHandler.setDefaults(preferencesLoader.getIPAddr(), preferencesLoader.getPort());
-    }
 
     private ImageView createImageView() {
         DisplayMetrics displayMetrics = new DisplayMetrics();
@@ -248,20 +220,6 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
         relativeLayout.addView(imageView, params);
 
         return imageView;
-    }
-
-    private ImageViewer createImageViewer() {
-        return new ImageViewer(this, createImageView()) {
-            @Override
-            public void onSwipe(float real_dx, float real_dy) {
-                messageSender.sendSwipeMessage(real_dx, real_dy);
-            }
-
-            @Override
-            public void onClick(float x, float y) {
-                messageSender.sendClickMessage(x, y);
-            }
-        };
     }
 
 
@@ -285,28 +243,6 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
         };
 
         detector = new ScaleGestureDetector(this, listener);
-    }
-
-    private void saveCAPublicKey(Context ctx, String path) {
-        // TODO
-        String key = "-----BEGIN PUBLIC KEY-----\n" +
-                "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx1317n8rtVa0lcj5GERl\n" +
-                "FZ4CtW+oWLP/Frqt8lh9E+yQSR+jV5Wj/1yfrV8ybfzU4d+KdR1pejQD8r1mGp6/\n" +
-                "0cxrpoRszE6x5H1ZYUBQFvG6Pqdvi/WEp2t9lLrgTCoUs+7KXRb1WUhnB4afGpoW\n" +
-                "a9FcqQOluQTi9YPTAEsrzp0u6HqtZUXx52784fvCc78smcTERaRnd5nt01Z6Sz0a\n" +
-                "lsjYtnkH2ZycIYHTsql8uHvHmrogIO4IJvstv7YO4k8/AeVvWENS07BnTS2tnNhu\n" +
-                "5URWIS+ybs4L9owFxweKUw5MUnBIKRwehQEa47L1naBIXSwkWdNja+VXvy6sXtRl\n" +
-                "UwIDAQAB\n" +
-                "-----END PUBLIC KEY-----";
-
-        File keyFile = new File(ctx.getFilesDir(), path);
-        try (FileOutputStream fileOutputStream = new FileOutputStream(keyFile);
-             DataOutputStream dataOutputStream = new DataOutputStream(fileOutputStream)) {
-            dataOutputStream.writeBytes(key);
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.out.println("failed to save key");
-        }
     }
 
     @Override

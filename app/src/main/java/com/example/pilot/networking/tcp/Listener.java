@@ -13,11 +13,17 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.inject.Singleton;
+
+@Singleton
 public class Listener {
     private final LinkedList<MessageRcvdObserver> msgRcvdObservers;
     private final MessageSecurityPreprocessor preprocessor;
 
-    public Listener(MessageSecurityPreprocessor preprocessor) {
+    @Inject
+    public Listener(@Named("TCP preprocessor") MessageSecurityPreprocessor preprocessor) {
         this.preprocessor = preprocessor;
         this.msgRcvdObservers = new LinkedList<>();
     }

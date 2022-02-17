@@ -10,6 +10,10 @@ import org.json.JSONObject;
 import java.util.Base64;
 import java.util.LinkedList;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
+@Singleton
 public class MessageReceiver implements MessageRcvdObserver {
     private final LinkedList<AuthStatusObserver> authStatusObservers;
     private final MediaReceiver mediaReceiver;
@@ -33,6 +37,7 @@ public class MessageReceiver implements MessageRcvdObserver {
         }
     }
 
+    @Inject
     public MessageReceiver(MediaReceiver mediaReceiver, MessageSender messageSender) {
         this.mediaReceiver = mediaReceiver;
         this.messageSender = messageSender;
@@ -78,6 +83,7 @@ public class MessageReceiver implements MessageRcvdObserver {
 
     private void handleAuthMessage(JSONObject value) throws JSONException {
         boolean is_granted = value.getBoolean("is_granted");
+        System.out.println("GOT AUTH: " + is_granted);
         authStatusObservers.forEach(is_granted ?
                 AuthStatusObserver::authSucceeded :
                 AuthStatusObserver::authFailed);

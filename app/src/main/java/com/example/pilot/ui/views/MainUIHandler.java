@@ -31,7 +31,12 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.inject.Singleton;
 
+
+@Singleton
 public class MainUIHandler implements ConnectionStatusObserver, AuthStatusObserver, KeyboardInputHandler {
     private final MessageSender messageSender;
     private final AppCompatActivity activity;
@@ -46,17 +51,22 @@ public class MainUIHandler implements ConnectionStatusObserver, AuthStatusObserv
     private final MediaStreamHandler audioStreamHandler;
 
 
-    public MainUIHandler(MessageSender messageSender, FpsUpdater fpsUpdater, AppCompatActivity activity,
-                         GuiRunner guiRunner, MediaStreamHandler videoStreamHandler, MediaStreamHandler audioStreamHandler) {
+    @Inject
+    public MainUIHandler(MessageSender messageSender, FpsUpdater fpsUpdater,
+                         @Named("main activity") AppCompatActivity activity,
+                         GuiRunner guiRunner,
+                         @Named("video stream handler") MediaStreamHandler videoStreamHandler,
+                         @Named("audio stream handler") MediaStreamHandler audioStreamHandler,
+                         AuthHandler authHandler)
+    {
         this.messageSender = messageSender;
         this.activity = activity;
         this.guiRunner = guiRunner;
         this.videoStreamHandler = videoStreamHandler;
         this.audioStreamHandler = audioStreamHandler;
+        this.authHandler = authHandler;
         this.menuViews = new HashMap<>();
         this.constantNames = new HashMap<>();
-
-        authHandler = new AuthHandler(activity, messageSender);
 
         EditText textInput = activity.findViewById(R.id.keyboardInput);
         keyboardController = new KeyboardController(this, textInput);

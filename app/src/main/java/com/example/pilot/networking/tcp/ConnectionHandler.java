@@ -9,6 +9,11 @@ import java.io.*;
 import java.util.LinkedList;
 import java.util.concurrent.ExecutorService;
 
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.inject.Singleton;
+
+@Singleton
 public class ConnectionHandler implements Runnable {
     private final static long DEFAULT_RECONNECT_TIMEOUT_MILLIS = 500;
 
@@ -27,7 +32,10 @@ public class ConnectionHandler implements Runnable {
 
     private final ExecutorService executorService;
 
-    public ConnectionHandler(String ipAddr, int port, TLSHandler tlsHandler, Listener listener, ExecutorService executorService) {
+    @Inject
+    public ConnectionHandler(@Named("server ip address") String ipAddr, @Named("server port") int port,
+                             TLSHandler tlsHandler, Listener listener,
+                             @Named("connection executor") ExecutorService executorService) {
         this.port = port;
         this.ipAddr = ipAddr;
         this.tlsHandler = tlsHandler;

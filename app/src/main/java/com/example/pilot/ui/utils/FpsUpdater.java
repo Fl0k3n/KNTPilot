@@ -4,13 +4,22 @@ import android.view.MenuItem;
 
 import java.util.concurrent.TimeUnit;
 
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.inject.Singleton;
+
+@Singleton
 public class FpsUpdater {
     private final GuiRunner guiRunner;
     private final FPSCounter fpsCounter;
     private long updateEveryMs;
     private Thread updaterThread;
 
-    public FpsUpdater(GuiRunner guiRunner, FPSCounter fpsCounter, long updateEvery, TimeUnit timeUnit) {
+    @Inject
+    public FpsUpdater(GuiRunner guiRunner, FPSCounter fpsCounter,
+                      @Named("fps ui update time") long updateEvery,
+                      @Named("fps ui update time unit") TimeUnit timeUnit)
+    {
         this.guiRunner = guiRunner;
         this.fpsCounter = fpsCounter;
         updaterThread = null;
