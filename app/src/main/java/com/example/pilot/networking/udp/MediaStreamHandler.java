@@ -1,6 +1,8 @@
 package com.example.pilot.networking.udp;
 
 
+import android.util.Log;
+
 import androidx.annotation.GuardedBy;
 
 import com.example.pilot.ui.utils.MediaPlayer;
@@ -14,6 +16,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class MediaStreamHandler {
+    private static final String TAG = "Media Stream Handler";
     // buffer will hold up to (prefetchMs * BUFFER_SIZE_MULTIPLIER) data
     // TODO make this adaptive
     private static final int BUFFER_SIZE_MULTIPLIER = 4;
@@ -50,7 +53,6 @@ public class MediaStreamHandler {
         this.executorService = Executors.newSingleThreadExecutor();
 
         prefetchFrameAmount = computePrefetchSize();
-        System.out.println("[" + getMediaType() + "] prefetch" + prefetchFrameAmount);
     }
 
     public void start() {
@@ -99,13 +101,13 @@ public class MediaStreamHandler {
                     buffer.put(mediaFrame);
                     break;
                 } catch (OverrunException overrunException) {
-                    System.out.println("[" + getMediaType() + "] " + overrunException.getMessage());
+                    Log.i(TAG, "[" + getMediaType() + "] " + overrunException.getMessage());
                     handleOverrun();
                 }
             }
 
             if (prefetchMode && shouldFinishPrefetch()) {
-                System.out.println("[" + getMediaType() + "] " + "Starting to play");
+                Log.i(TAG, "[" + getMediaType() + "] " + "Starting to play");
 
                 prefetchMode = false;
                 consumerCond.signalAll();
@@ -141,8 +143,8 @@ public class MediaStreamHandler {
 
     private void initMediaConsumer() {
          mediaConsumer = executorService.submit(() -> {
-             System.out.println("[" + getMediaType() + "] " +" Consumer started");
-            while (true) {
+             Log.i(TAG, "[" + getMediaType() + "] " +" Consumer started");
+             while (true) {
                 try {
                     Optional<MediaFrame> mediaFrame;
 
@@ -160,10 +162,10 @@ public class MediaStreamHandler {
                         mediaPlayer.enqueueMediaFrame(mediaFrame.get());
                     }
                     else {
-                        System.out.println("[" + getMediaType() + "] " +"BUFFER UNDERRUN");
+                        Log.i(TAG,"[" + getMediaType() + "] " +"BUFFER UNDERRUN");
                     }
                 } catch (InterruptedException interruptedException) {
-                    System.out.println("[" + getMediaType() + "] " +"Media consumer interrupted, exiting.");
+                    Log.d(TAG, "[" + getMediaType() + "] " +"Media consumer interrupted, exiting.");
                     return;
                 }
             }
@@ -194,11 +196,11 @@ public class MediaStreamHandler {
             consumerLock.lock();
             if (mediaConsumer != null) {
                 if (!mediaConsumer.cancel(true)){
-                    System.out.println("[" + getMediaType() + "] " + "Failed to cancel media consumer");
+                    Log.d(TAG, "[" + getMediaType() + "] " + "Failed to cancel media consumer");
                 }
-                System.out.println("*****************************************");
-                System.out.println("[" + getMediaType() + "] " +"consumer CANCELED");
-                System.out.println("*****************************************");
+                else {
+                    Log.d(TAG, "[" + getMediaType() + "] " + "consumer CANCELED");
+                }
                 mediaConsumer = null;
             }
 

@@ -1,5 +1,7 @@
 package com.example.pilot.networking.tcp;
 
+import android.util.Log;
+
 import androidx.annotation.GuardedBy;
 
 import com.example.pilot.networking.observers.ConnectionStatusObserver;
@@ -18,6 +20,7 @@ import javax.inject.Singleton;
 
 @Singleton
 public class Sender implements ConnectionStatusObserver {
+    private static final String TAG = "Sender";
     private static final int SEND_QUEUE_CAPACITY = 16;
 
     private final BlockingQueue<String> jsonMessages;
@@ -47,17 +50,15 @@ public class Sender implements ConnectionStatusObserver {
                     String msg = jsonMessages.take();
 
                     try  {
-                        System.out.println("******************************");
-                        System.out.println("sending: " + msg);
+                        Log.d(TAG, "Sending: " + msg);
                         byte[] data = preprocessor.preprocessToSend(msg.getBytes());
                         outputStream.write(data);
                     } catch (IOException e) {
                         // this thread shouldn't handle this
-                        e.printStackTrace();
+                        Log.d(TAG, "Sender interrupted");
                         return;
                     } catch (SecurityException e) {
-                        // TODO
-                        e.printStackTrace();
+                        Log.wtf(TAG, "Security failed when trying to send message", e);
                         return;
                     }
 

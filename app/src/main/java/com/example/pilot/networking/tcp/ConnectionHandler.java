@@ -1,4 +1,6 @@
 package com.example.pilot.networking.tcp;
+import android.util.Log;
+
 import com.example.pilot.networking.observers.ConnectionStatusObserver;
 import com.example.pilot.security.exceptions.AuthenticationException;
 import com.example.pilot.security.exceptions.SecurityException;
@@ -8,6 +10,9 @@ import java.net.*;
 import java.io.*;
 import java.util.LinkedList;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -15,15 +20,17 @@ import javax.inject.Singleton;
 
 @Singleton
 public class ConnectionHandler implements Runnable {
-    private final static long DEFAULT_RECONNECT_TIMEOUT_MILLIS = 500;
+    private static String TAG = "ConnectionHandler";
 
-    private long reconnect_timeout_millis;
+    private final static long DEFAULT_RECONNECT_TIMEOUT_MILLIS = 1000;
+
+    private AtomicLong reconnect_timeout_millis;
     private int port;
     private String ipAddr;
 
     private Socket serverSocket;
 
-    private boolean isConnected;
+    private AtomicBoolean isConnected;
 
     private final TLSHandler tlsHandler;
 
@@ -31,6 +38,7 @@ public class ConnectionHandler implements Runnable {
     private final Listener listener;
 
     private final ExecutorService executorService;
+    private Future<?> connectionListenerTask;
 
     @Inject
     public ConnectionHandler(@Named("server ip address") String ipAddr, @Named("server port") int port,
@@ -39,9 +47,9 @@ public class ConnectionHandler implements Runnable {
         this.port = port;
         this.ipAddr = ipAddr;
         this.tlsHandler = tlsHandler;
-        this.reconnect_timeout_millis = DEFAULT_RECONNECT_TIMEOUT_MILLIS;
+        this.reconnect_timeout_millis = new AtomicLong(DEFAULT_RECONNECT_TIMEOUT_MILLIS);
         this.connectionStatusObservers = new LinkedList<>();
-        this.isConnected = false;
+        this.isConnected = new AtomicBoolean(false);
         this.listener = listener;
         this.executorService = executorService;
     }
@@ -49,7 +57,7 @@ public class ConnectionHandler implements Runnable {
     public synchronized void setConnectionParams(String ipAddr, int port) {
         this.ipAddr = ipAddr;
         this.port = port;
-        reconnect_timeout_millis = DEFAULT_RECONNECT_TIMEOUT_MILLIS;
+        reconnect_timeout_millis.set(DEFAULT_RECONNECT_TIMEOUT_MILLIS);
     }
 
     public synchronized void addConnectionStatusObserver(ConnectionStatusObserver obs) {
@@ -57,16 +65,16 @@ public class ConnectionHandler implements Runnable {
     }
 
     public void establishConnection() {
-        executorService.submit(this);
+        connectionListenerTask = executorService.submit(this);
     }
 
     @Override
     public void run() {
         while (true) {
             try (Socket socket = new Socket(ipAddr, port)) {
-                reconnect_timeout_millis = DEFAULT_RECONNECT_TIMEOUT_MILLIS;
+                reconnect_timeout_millis.set(DEFAULT_RECONNECT_TIMEOUT_MILLIS);
+                isConnected.set(true);
                 serverSocket = socket;
-                isConnected = true;
 
                 tlsHandler.establishSecureChannel(socket);
 
@@ -74,10 +82,10 @@ public class ConnectionHandler implements Runnable {
 
                 listener.listen(socket);
             } catch (IOException e) {
-                e.printStackTrace();
-                System.out.println(e.getMessage());
+                Log.d(TAG, "failed to connect", e);
+
                 synchronized (this) {
-                    if (isConnected) {
+                    if (isConnected.get()) {
                         // connection lost
                         connectionStatusObservers.forEach(connectionStatusObserver -> connectionStatusObserver.connectionLost(serverSocket));
                     } else {
@@ -85,23 +93,41 @@ public class ConnectionHandler implements Runnable {
                         connectionStatusObservers.forEach(obs -> obs.failedToConnect(e.getMessage()));
                     }
                     serverSocket = null;
-                    isConnected = false;
+                    isConnected.set(false);
                 }
             } catch (SecurityException | AuthenticationException e) {
                 // TODO
-                System.out.println("SECURITY FAILED " + e.getMessage());
-                e.printStackTrace();
+                establishConnection();
+                Log.wtf(TAG, "security failed", e);
+                return;
             }
 
             try {
-                Thread.sleep(reconnect_timeout_millis);
-            } catch (InterruptedException e) {
-                // TODO reset timeout here
+                waitForNextConnectionTry();
+            } catch (InterruptedException consumed) {
+                Log.d(TAG, "Connection listener interrupted");
+                return;
             }
+        }
+    }
 
-//            synchronized (this) {
-//                reconnect_timeout_millis *= 2;
-//            }
+    private void waitForNextConnectionTry() throws InterruptedException{
+        long sleepTime = reconnect_timeout_millis.get();
+        Thread.sleep(sleepTime);
+
+        reconnect_timeout_millis.set(Math.min(DEFAULT_RECONNECT_TIMEOUT_MILLIS * 16, sleepTime * 2));
+    }
+
+    public synchronized void retryConnection() {
+        if (!isConnected.get() && connectionListenerTask != null) {
+            // can be connected but listeners were not called yet
+            if (connectionListenerTask.cancel(true)) {
+                Log.d(TAG, "connection listener cancelled");
+            }
+            else {
+                Log.e(TAG, "failed to cancel listener");
+            }
+            establishConnection();
         }
     }
 }

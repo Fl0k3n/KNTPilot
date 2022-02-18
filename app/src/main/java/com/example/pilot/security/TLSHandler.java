@@ -1,5 +1,7 @@
 package com.example.pilot.security;
 
+import android.util.Log;
+
 import com.example.pilot.security.certificate.Certificate;
 import com.example.pilot.security.certificate.CertificateVerifier;
 import com.example.pilot.security.exceptions.KeyException;
@@ -21,6 +23,7 @@ import javax.inject.Singleton;
 
 @Singleton
 public class TLSHandler {
+    private static final String TAG = "TLS Handler";
     // RSA PKCS#1 OAEP, this should be negotiated, TODO
     private static final String SUBJECT_ASYMMETRIC_ENCRYPTION_ALGORITHM = "RSA/NONE/OAEPWithSHA1AndMGF1Padding";
 
@@ -37,14 +40,24 @@ public class TLSHandler {
 
     public void establishSecureChannel(Socket serverSocket) throws IOException, SecurityException {
         this.serverSocket = serverSocket;
-        System.out.println("sending hello");
+
+        Log.i(TAG, "sending hello");
+
         sendHello();
-        System.out.println("sent hello");
+
+        Log.i(TAG, "sent hello");
+
         byte[] certBytes = awaitCertificate();
-        System.out.println("got certificiate");
+
+        Log.i(TAG, "got certificiate");
+
         Certificate certificate = assertValidCertificate(certBytes);
-        System.out.println("sending secret key");
+
+        Log.i(TAG, "certificate valid, sending secret key");
+
         sendEncryptedSessionKey(certificate);
+
+        Log.i(TAG, "secret key sent, secure channel established successfully");
     }
 
 
@@ -53,7 +66,7 @@ public class TLSHandler {
             byte[] key = certificate.getEncryptedSessionKey(tcpGuard.getSessionKey(), SUBJECT_ASYMMETRIC_ENCRYPTION_ALGORITHM);
             sendTLSInitData(TLSCode.SECRET, key);
         } catch (KeyException | IOException e) {
-            e.printStackTrace();
+            Log.w(TAG, e);
             throw new SecurityException(e.getMessage());
         }
     }
@@ -63,22 +76,19 @@ public class TLSHandler {
         try {
             Certificate certificate = new Certificate(certBytes);
             if (certificateVerifier.verify(certificate)) {
-                System.out.println("OK certificate is valid");
                 return certificate;
             }
-            else {
-                System.out.println("Certificate invalid");
-                throw new SecurityException("Received Invalid certificate");
-            }
-        } catch (JSONException | KeyException jsonException) {
-            jsonException.printStackTrace();
+
+            throw new SecurityException("Received Invalid certificate");
+        } catch (JSONException | KeyException e) {
+            Log.e(TAG, "Failed to verify certificate" , e);
             throw new SecurityException("Failed to process certificate");
         }
     }
 
     private byte[] awaitCertificate() throws IOException {
         int headerSize = TLSPacket.HEADER_SIZE;
-        byte[] headerBuff = new byte[headerSize]; // TODO
+        byte[] headerBuff = new byte[headerSize];
         int totalRead = 0;
 
         while (totalRead < headerSize) {
@@ -91,7 +101,7 @@ public class TLSHandler {
 
         TLSCode tlsCode = TLSCode.fromInteger(code);
         if (!tlsCode.equals(TLSCode.CERTIFICATE)) {
-            System.out.println("Received wrong code " + code); // TODO
+            Log.w(TAG, "TLS got unexpected code while waiting for certificate" + tlsCode);
             return awaitCertificate();
         }
 

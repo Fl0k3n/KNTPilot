@@ -1,5 +1,7 @@
 package com.example.pilot.security;
 
+import android.util.Log;
+
 import com.example.pilot.security.exceptions.AuthenticationException;
 import com.example.pilot.security.exceptions.SecurityException;
 
@@ -18,13 +20,14 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 public class UDPGuard extends AbstractGuard{
+    private static final String TAG = "UDP Guard";
     private static final String KEY_ALGORITHM = "ChaCha20-Poly1305";
     private static final String SYMMETRIC_ALGORITHM = "ChaCha20/Poly1305/NoPadding";
     private static final int MAC_LENGTH = 16; // bytes
     private static final int NONCE_LENGTH = 12;
     private static final int KEY_LENGTH = 32;
 
-    public UDPGuard() throws NoSuchAlgorithmException {
+    public UDPGuard() {
         super(NONCE_LENGTH, MAC_LENGTH);
     }
 
@@ -40,7 +43,6 @@ public class UDPGuard extends AbstractGuard{
         try {
             return cipher.doFinal(message);
         } catch (BadPaddingException | IllegalBlockSizeException e) {
-            e.printStackTrace();
             throw new SecurityException("Failed to encrypt message " + e.getMessage());
         }
     }
@@ -54,7 +56,6 @@ public class UDPGuard extends AbstractGuard{
         } catch (AEADBadTagException tagException) {
             throw new AuthenticationException("MAC authentication failed " + tagException.getMessage());
         } catch (BadPaddingException | IllegalBlockSizeException e) {
-            e.printStackTrace();
             throw new SecurityException("Failed to decrypt message " + e.getMessage());
         }
     }
@@ -72,7 +73,7 @@ public class UDPGuard extends AbstractGuard{
 
             return cipher;
         } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidAlgorithmParameterException | InvalidKeyException e) {
-            e.printStackTrace();
+            Log.wtf(TAG, "Failed to initialise cipher", e);
             throw new SecurityException("Failed to initialise cipher " + e.getMessage());
         }
     }

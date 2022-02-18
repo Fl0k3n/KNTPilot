@@ -1,5 +1,7 @@
 package com.example.pilot.networking.tcp;
 
+import android.util.Log;
+
 import com.example.pilot.networking.observers.SsRcvdObserver;
 import com.example.pilot.utils.ScreenShot;
 import com.example.pilot.utils.SpecialKeyCode;
@@ -17,6 +19,7 @@ import javax.inject.Singleton;
 
 @Singleton
 public class MessageSender implements AuthSender, SsRcvdObserver {
+    private static final String TAG = "MessageSender";
     private final Sender sender;
 
     @Inject
@@ -34,7 +37,7 @@ public class MessageSender implements AuthSender, SsRcvdObserver {
 
     public void sendSwipeMessage(float real_dx, float real_dy) {
         int dx = (int)real_dx, dy = (int)real_dy;
-        System.out.printf("SWIPED: %d x %d\n", dx, dy);
+
         try {
             JSONObject inner = new JSONObject();
             inner.put("dx", dx);
@@ -42,19 +45,33 @@ public class MessageSender implements AuthSender, SsRcvdObserver {
 
             sendMsg(MsgCode.MOVE_SCREEN, inner);
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.w(TAG, e);
         }
     }
 
-    public void sendClickMessage(float x, float y) {
+    public void sendClickMessage(float x, float y, boolean rightMouse) {
         try {
             JSONObject inner = new JSONObject();
             inner.put("x", x);
             inner.put("y", y);
+            inner.put("button", rightMouse ? "right" : "left");
 
             sendMsg(MsgCode.CLICK, inner);
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.w(TAG, e);
+        }
+    }
+
+    public void sendDoubleClickMessage(float x, float y, boolean rightMouse) {
+        try {
+            JSONObject inner = new JSONObject();
+            inner.put("x", x);
+            inner.put("y", y);
+            inner.put("button", rightMouse ? "right" : "left");
+
+            sendMsg(MsgCode.DOUBLE_CLICK, inner);
+        } catch (JSONException e) {
+            Log.w(TAG, e);
         }
     }
 
@@ -66,7 +83,7 @@ public class MessageSender implements AuthSender, SsRcvdObserver {
         try {
             sender.enqueueJsonMessageRequest(buildStringMsg(MsgCode.CHANGE_MONITOR, ""));
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.w(TAG, e);
         }
     }
 
@@ -76,7 +93,7 @@ public class MessageSender implements AuthSender, SsRcvdObserver {
             jsonObject.put("ratio", (double)ratio);
             sender.enqueueJsonMessageRequest(buildStringMsg(MsgCode.RESCALE, jsonObject));
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.w(TAG, e);
         }
     }
 
@@ -95,7 +112,7 @@ public class MessageSender implements AuthSender, SsRcvdObserver {
 
             sender.enqueueJsonMessageRequest(buildStringMsg(MsgCode.KEYBOARD_INPUT, jsonObject));
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.w(TAG, e);
         }
     }
 
@@ -107,7 +124,7 @@ public class MessageSender implements AuthSender, SsRcvdObserver {
             jsonObject.put("password", password);
             sender.enqueueJsonMessageRequest(buildStringMsg(MsgCode.AUTH, jsonObject));
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.w(TAG, e);
         }
     }
 
@@ -117,7 +134,7 @@ public class MessageSender implements AuthSender, SsRcvdObserver {
             jsonObject.put("up", up);
             sender.enqueueJsonMessageRequest(buildStringMsg(MsgCode.SCROLL, jsonObject));
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.w(TAG, e);
         }
     }
 
@@ -126,15 +143,15 @@ public class MessageSender implements AuthSender, SsRcvdObserver {
             sender.enqueueJsonMessageRequest(
                     buildStringMsg(isMuted ? MsgCode.MUTE : MsgCode.UNMUTE, ""));
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.w(TAG, e);
         }
     }
 
     public void sendMediaSecretChannelAck() {
         try {
             sender.enqueueJsonMessageRequest(buildStringMsg(MsgCode.UDP_SECRET_ACK, ""));
-        } catch (JSONException jsonException) {
-            jsonException.printStackTrace();
+        } catch (JSONException e) {
+            Log.w(TAG, e);
         }
     }
 
@@ -144,7 +161,7 @@ public class MessageSender implements AuthSender, SsRcvdObserver {
             sender.enqueueJsonMessageRequest(buildStringMsg(MsgCode.SS_RCVD, ""));
             System.out.println("SS MESSAGE ENQUEUED");
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.w(TAG, e);
         }
     }
 }

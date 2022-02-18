@@ -1,5 +1,7 @@
 package com.example.pilot.networking.tcp;
 
+import android.util.Log;
+
 import com.example.pilot.networking.observers.AuthStatusObserver;
 import com.example.pilot.networking.observers.MessageRcvdObserver;
 import com.example.pilot.networking.udp.MediaReceiver;
@@ -15,6 +17,8 @@ import javax.inject.Singleton;
 
 @Singleton
 public class MessageReceiver implements MessageRcvdObserver {
+    private static final String TAG = "MessageReceiver";
+
     private final LinkedList<AuthStatusObserver> authStatusObservers;
     private final MediaReceiver mediaReceiver;
     private final MessageSender messageSender;
@@ -55,9 +59,7 @@ public class MessageReceiver implements MessageRcvdObserver {
             JsonMessage message = parseMsg(jsonData);
             handleMessage(message);
         } catch (JSONException e) {
-            System.out.println("Rcvd unparsable json msg");
-            System.out.println(jsonData);
-            System.out.println(e.getMessage());
+            Log.w(TAG, "Rcvd unparsable json msg", e);
         }
     }
 
@@ -83,7 +85,6 @@ public class MessageReceiver implements MessageRcvdObserver {
 
     private void handleAuthMessage(JSONObject value) throws JSONException {
         boolean is_granted = value.getBoolean("is_granted");
-        System.out.println("GOT AUTH: " + is_granted);
         authStatusObservers.forEach(is_granted ?
                 AuthStatusObserver::authSucceeded :
                 AuthStatusObserver::authFailed);

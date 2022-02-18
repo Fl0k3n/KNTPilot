@@ -1,12 +1,11 @@
 package com.example.pilot.ui.utils;
 
-import com.example.pilot.networking.observers.SsRcvdObserver;
+import android.util.Log;
+
 import com.example.pilot.networking.udp.MediaCode;
 import com.example.pilot.networking.udp.MediaFrame;
-import com.example.pilot.ui.views.ImageViewer;
 import com.example.pilot.utils.ScreenShot;
 
-import java.util.LinkedList;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -14,12 +13,13 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class VideoPlayer implements MediaPlayer {
+    private static final String TAG = "Video Player";
     private static final int QUEUE_CAPACITY = 1;
 
     private final int max_fps;
     private final long perfectFrameTimeMs;
     private final GuiRunner guiRunner;
-    private final ImageViewer imageViewer;
+    private final ImageViewController imageViewer;
     private final BlockingQueue<MediaFrame> buffer;
     private final FPSCounter fpsCounter;
 
@@ -27,7 +27,7 @@ public class VideoPlayer implements MediaPlayer {
     private Future<?> playerTask;
 
 
-    public VideoPlayer(GuiRunner guiRunner, ImageViewer imageViewer, FPSCounter fpsCounter, int max_fps) {
+    public VideoPlayer(GuiRunner guiRunner, ImageViewController imageViewer, FPSCounter fpsCounter, int max_fps) {
         this.guiRunner = guiRunner;
         this.imageViewer = imageViewer;
         this.fpsCounter = fpsCounter;
@@ -63,7 +63,10 @@ public class VideoPlayer implements MediaPlayer {
     public synchronized void stop() {
         if (playerTask != null) {
             if (playerTask.cancel(true)) {
-                System.out.println("Video player stopped");
+                Log.d(TAG,"Video player stopped");
+            }
+            else {
+                Log.w(TAG, "Failed to stop video player");
             }
             playerTask = null;
         }
@@ -73,7 +76,8 @@ public class VideoPlayer implements MediaPlayer {
 
     private void initPlayerTask() {
         playerTask = executorService.submit(() -> {
-            System.out.println("Video player started");
+            Log.i(TAG,"Video player started");
+
             try {
                 while (true) {
                     MediaFrame frame = buffer.take();
@@ -83,7 +87,7 @@ public class VideoPlayer implements MediaPlayer {
                     waitBeforeNextFrame();
                 }
             } catch (InterruptedException consumed) {
-                System.out.println("Video player interrupted, exiting");
+                Log.d(TAG,"Video player interrupted, exiting");
             }
         });
     }
@@ -95,6 +99,7 @@ public class VideoPlayer implements MediaPlayer {
     }
 
     private void waitBeforeNextFrame() throws InterruptedException {
+        // TODO
         long estimatedFrameTime = fpsCounter.getFrameTimeApproxMs();
         Thread.sleep(perfectFrameTimeMs);
 //        if (estimatedFrameTime > perfectFrameTimeMs)

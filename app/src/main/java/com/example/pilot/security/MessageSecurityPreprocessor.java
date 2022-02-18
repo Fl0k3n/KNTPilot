@@ -1,5 +1,7 @@
 package com.example.pilot.security;
 
+import android.util.Log;
+
 import com.example.pilot.security.exceptions.AuthenticationException;
 import com.example.pilot.security.exceptions.SecurityException;
 import com.example.pilot.security.utils.TLSCode;
@@ -9,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 
 public class MessageSecurityPreprocessor {
+    private final static String TAG = "Message Security Preprocessor";
     private final Guard guard;
 
     public MessageSecurityPreprocessor(Guard guard) {
@@ -19,7 +22,7 @@ public class MessageSecurityPreprocessor {
         byte[] nonce = guard.getNonce();
         TLSPacket tlsPacket = new TLSPacket(TLSCode.SECURE, (short) messageToSend.length, nonce.length, nonce, messageToSend);
 
-        System.out.println("sending len: " + messageToSend.length);
+        Log.d(TAG, "sending len: " + messageToSend.length);
 
         byte[] encryptedData = guard.encrypt(tlsPacket.data, tlsPacket.header, nonce);
 

@@ -1,4 +1,4 @@
-package com.example.pilot.ui.views;
+package com.example.pilot.ui.controller;
 
 import android.view.Menu;
 import android.view.MenuItem;
@@ -16,12 +16,12 @@ import java.util.Locale;
 import javax.inject.Inject;
 import javax.inject.Named;
 
-public class SettingsHandler {
+public class SettingsController {
     private final AppCompatActivity activity;
     private final EditText ipAddrInput, portNumberInput;
 
     @Inject
-    public SettingsHandler(@Named("settings activity") AppCompatActivity activity) {
+    public SettingsController(@Named("settings activity") AppCompatActivity activity) {
         this.activity = activity;
         ipAddrInput = this.activity.findViewById(R.id.ipAddrInput);
         portNumberInput = this.activity.findViewById(R.id.portNumberInput);

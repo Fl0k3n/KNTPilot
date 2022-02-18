@@ -31,6 +31,7 @@ public class SecurityModule {
             this.udpGuard = new UDPGuard();
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
+            throw new RuntimeException("Failed to create guards");
             // TODO
         }
     }

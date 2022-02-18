@@ -1,5 +1,7 @@
 package com.example.pilot.networking.udp;
 
+import android.util.Log;
+
 import com.example.pilot.networking.observers.ConnectionStatusObserver;
 import com.example.pilot.networking.tcp.MsgCode;
 import com.example.pilot.security.MessageSecurityPreprocessor;
@@ -20,8 +22,11 @@ import java.util.concurrent.Future;
 
 import javax.inject.Inject;
 import javax.inject.Named;
+import javax.inject.Singleton;
 
+@Singleton
 public class MediaReceiver implements ConnectionStatusObserver {
+    private final static String TAG = "Media Receiver";
     private final static String IP_ADDR = "0.0.0.0";
 
     private final int port;
@@ -81,7 +86,7 @@ public class MediaReceiver implements ConnectionStatusObserver {
 
     public void initReceiverTask() {
         receiverTask = executorService.submit(() -> {
-            System.out.println("MediaReceiver listening");
+            Log.d(TAG, "Listenning");
             byte[] buf = new byte[MAX_DATAGRAM_SIZE];
             try {
                 while (true) {
@@ -99,25 +104,21 @@ public class MediaReceiver implements ConnectionStatusObserver {
                             getStreamHandler(code).addMediaFrame(mediaFrame.get());
                         }
                     } catch (InterruptedException consumed) {
-                        System.out.println("media receiver Interrupted, exiting");
+                        Log.d(TAG, "media receiver Interrupted, exiting");
                         return;
                     } catch (AuthenticationException e) {
                         // probably udp error, ignore this frame
-                        System.out.println("Auth failed for Udp message " + e.getMessage());
-                        e.printStackTrace();
+                        Log.w(TAG, "Auth failed for Udp message ", e);
                     } catch (SecurityException e) {
-                        System.out.println("Security error while receiving, terminating. " + e.getMessage());
-                        e.printStackTrace();
+                        Log.e(TAG,"Security error while receiving, terminating. ", e);
                         return;
                     } catch (Exception e) {
-                        e.printStackTrace();
-                        System.out.println("Failed to handle datagram from " + datagramPacket.getAddress() + "\n" + e.getMessage());
+                        Log.w(TAG, "Failed to handle datagram from " + datagramPacket.getAddress(), e);
                     }
                 }
             } catch (IOException exception) {
-                exception.printStackTrace();
                 if (Thread.currentThread().isInterrupted()) {
-                    System.out.println("media receiver interrupted, exiting");
+                    Log.d(TAG, "media receiver interrupted, exiting");
                 }
             }
         });
@@ -145,8 +146,7 @@ public class MediaReceiver implements ConnectionStatusObserver {
 
             initReceiverTask();
         } catch (SocketException e) {
-            System.out.println("Failed to open socket");
-            e.printStackTrace();
+            Log.wtf(TAG, "Failed to open socket", e);
         }
     }
 
@@ -158,7 +158,10 @@ public class MediaReceiver implements ConnectionStatusObserver {
 
             if (receiverTask != null) {
                 if (receiverTask.cancel(true)) {
-                    System.out.println("MediaReceiver stopped");
+                    Log.i(TAG, "Media Receiver stopped");
+                }
+                else {
+                    Log.w(TAG, "Failed to cancel receiver");
                 }
                 receiverTask = null;
             }
@@ -175,5 +178,9 @@ public class MediaReceiver implements ConnectionStatusObserver {
             if (assembler != null)
                 assembler.clearBuffer();
         }
+    }
+
+    public void clearFragmentBuffer(MediaCode code) {
+        getFragmentAssembler(code).clearBuffer();
     }
 }

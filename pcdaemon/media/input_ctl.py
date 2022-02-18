@@ -3,10 +3,14 @@ import pyautogui
 
 
 class InputController:
-    def click(self, x, y):
+    def click(self, x: float, y: float, button: str):
         prev_x, prev_y = pyautogui.position()
-        pyautogui.click(x, y)
+        print("BUTTON: ", button)
+        pyautogui.click(x, y, button=button)
         # pyautogui.moveTo(prev_x, prev_y)
+
+    def double_click(self, x: float, y: float, button: str):
+        pyautogui.doubleClick(x, y, button=button)
 
     def press_key(self, key: str, modifiers: List[str]):
         for modifier in modifiers:

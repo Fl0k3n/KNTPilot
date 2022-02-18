@@ -2,23 +2,26 @@ package com.example.pilot.ui;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.app.Application;
-import android.content.Context;
-import android.media.Image;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Menu;
-import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
+import android.widget.Toast;
 
 import com.example.pilot.IOC.DaggerAppComponent;
 import com.example.pilot.IOC.MediaModule;
 import com.example.pilot.IOC.NetworkingModule;
 import com.example.pilot.IOC.SecurityModule;
 import com.example.pilot.R;
+import com.example.pilot.networking.observers.AuthStatusObserver;
+import com.example.pilot.networking.observers.ConnectionStatusObserver;
 import com.example.pilot.networking.tcp.Listener;
 import com.example.pilot.networking.udp.MediaReceiver;
 import com.example.pilot.networking.tcp.MessageReceiver;
@@ -26,26 +29,34 @@ import com.example.pilot.networking.tcp.Sender;
 import com.example.pilot.ui.events.ImageScaleListener;
 import com.example.pilot.networking.udp.MediaStreamHandler;
 import com.example.pilot.ui.utils.GuiRunner;
+import com.example.pilot.ui.utils.ImageViewController;
+import com.example.pilot.ui.controller.KeyboardController;
 import com.example.pilot.ui.utils.SoundPlayer;
-import com.example.pilot.ui.views.MainUIHandler;
-import com.example.pilot.ui.views.SettingsHandler;
+import com.example.pilot.ui.controller.AuthController;
+import com.example.pilot.ui.controller.MenuController;
+import com.example.pilot.ui.controller.SettingsController;
+import com.example.pilot.ui.controller.UserInputController;
 import com.example.pilot.utils.KeyboardModifier;
 import com.example.pilot.networking.tcp.MessageSender;
 import com.example.pilot.networking.tcp.ConnectionHandler;
 import com.example.pilot.utils.SpecialKeyCode;
-import com.example.pilot.utils.commands.ChangeSettingsVisibilityCommand;
 import com.example.pilot.utils.PreferencesLoader;
-import com.example.pilot.utils.commands.UpdateSettingsCommand;
+
+
+import java.net.Socket;
 
 import javax.inject.Inject;
 import javax.inject.Named;
 
-public class MainActivity extends AppCompatActivity implements GuiRunner {
+public class MainActivity extends AppCompatActivity implements GuiRunner, ConnectionStatusObserver, AuthStatusObserver {
+    private static final String TAG = "MainActivity";
+
     private ScaleGestureDetector detector;
     private PreferencesLoader preferencesLoader;
+    private Button retryConnectionBtn;
 
     @Inject
-    MainUIHandler uiHandler;
+    MenuController menuController;
 
     @Inject
     ConnectionHandler connectionHandler;
@@ -55,6 +66,9 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
 
     @Inject @Named("audio stream handler")
     MediaStreamHandler audioStreamHandler;
+
+    @Inject
+    AuthController authController;
 
     @Inject
     MediaReceiver mediaReceiver;
@@ -72,20 +86,29 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
     Listener listener;
 
     @Inject
-    SettingsHandler settingsHandler;
+    SettingsController settingsController;
 
     @Inject
     SoundPlayer soundPlayer;
+
+    @Inject
+    KeyboardController keyboardController;
+
+    @Inject
+    UserInputController userInputController;
+
+    @Inject
+    ImageViewController imageViewController;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        System.out.println("********UP********");
+        Log.i(TAG, "********UP********");
 
-        preferencesLoader = new PreferencesLoader(this);
+        initPreferencesLoader();
 
-        setContentView(R.layout.activity_main);
+        initUIControls();
 
         initIOCModules();
 
@@ -93,17 +116,39 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
 
         initNetworkObservers();
 
-        initScaleDetector();
+        initInteractionObservers();
 
         connectionHandler.establishConnection();
+    }
+
+    private void initPreferencesLoader() {
+        preferencesLoader = new PreferencesLoader(this);
+    }
+
+    private void initUIControls() {
+        setContentView(R.layout.activity_main);
+         retryConnectionBtn = findViewById(R.id.retryConnectionBtn);
+
+         retryConnectionBtn.setEnabled(false);
+
+         retryConnectionBtn.setOnClickListener(e -> {
+             retryConnectionBtn.setEnabled(false);
+             connectionHandler.retryConnection();
+         });
+    }
+
+    private void initInteractionObservers() {
+        initScaleDetector();
+        keyboardController.addKeyboardInputObserver(userInputController);
+        imageViewController.addImageInteractionObserver(userInputController);
     }
 
     private void initIOCModules() {
         SecurityModule securityModule = new SecurityModule(this.getFilesDir(), preferencesLoader.getCAPublicKeyPath());
 
         ImageView imageView = createImageView();
-
-        MediaModule mediaModule = new MediaModule(this, imageView, this);
+        EditText keyboard = findViewById(R.id.keyboardInput);
+        MediaModule mediaModule = new MediaModule(this, imageView, this, keyboard);
 
         String serverIpAddr = preferencesLoader.getIPAddr();
         int serverPort = preferencesLoader.getPort();
@@ -126,11 +171,19 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
     }
 
     private void initNetworkObservers() {
-        messageReceiver.addAuthStatusObserver(uiHandler);
+        messageReceiver.addAuthStatusObserver(menuController);
+        messageReceiver.addAuthStatusObserver(authController);
+        messageReceiver.addAuthStatusObserver(keyboardController);
+        messageReceiver.addAuthStatusObserver(userInputController);
+        messageReceiver.addAuthStatusObserver(this);
 
         connectionHandler.addConnectionStatusObserver(mediaReceiver);
-        connectionHandler.addConnectionStatusObserver(uiHandler);
+        connectionHandler.addConnectionStatusObserver(menuController);
         connectionHandler.addConnectionStatusObserver(sender);
+        connectionHandler.addConnectionStatusObserver(authController);
+        connectionHandler.addConnectionStatusObserver(keyboardController);
+        connectionHandler.addConnectionStatusObserver(userInputController);
+        connectionHandler.addConnectionStatusObserver(this);
 
         listener.addMsgRcvdObserver(messageReceiver);
     }
@@ -141,7 +194,7 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
 
         menu.findItem(R.id.keyboardBtn)
                 .setOnMenuItemClickListener(c -> {
-                    uiHandler.changeKeyboardVisibility(false);
+                    keyboardController.changeKeyboardVisibility(false);
                     return true;
                 });
 
@@ -173,7 +226,7 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
 
         menu.findItem(R.id.muteBtn).setOnMenuItemClickListener(e -> {
             boolean isMuted = soundPlayer.isMuted();
-            uiHandler.changeMuteIcon(!isMuted);
+            menuController.changeMuteIcon(!isMuted);
             messageSender.sendMuteMessage(!isMuted);
 
             if (isMuted)
@@ -194,10 +247,16 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
         menu.findItem(R.id.ShiftBtn)
                 .setOnMenuItemClickListener(e -> modifierHandler(KeyboardModifier.SHIFT_KEY));
 
-        settingsHandler.setupSettings(menu, connectionHandler, preferencesLoader);
+        menu.findItem(R.id.rightMouseON)
+                .setOnMenuItemClickListener(e -> {
+                    menuController.setRightMouse(!menuController.getRightMouseStatus());
+                    return true;
+                });
 
-        uiHandler.setMenu(menu);
-        uiHandler.changeMenuItemsVisibility(true);
+        settingsController.setupSettings(menu, connectionHandler, preferencesLoader);
+
+        menuController.setMenu(menu);
+        menuController.changeMenuItemsVisibility(true);
 
         return super.onCreateOptionsMenu(menu);
     }
@@ -224,7 +283,9 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
 
 
     private boolean modifierHandler(KeyboardModifier modifier) {
-        uiHandler.changeKeyboardModifier(modifier);
+        boolean isEnabled = keyboardController.isEnabled(modifier);
+        keyboardController.setKeyboardModifier(modifier, !isEnabled);
+        menuController.changeModifierLabel(modifier, !isEnabled);
         return true;
     }
 
@@ -245,8 +306,46 @@ public class MainActivity extends AppCompatActivity implements GuiRunner {
         detector = new ScaleGestureDetector(this, listener);
     }
 
+
     @Override
     public void scheduleGuiTask(Runnable task) {
         this.runOnUiThread(task);
+    }
+
+    private void showToast(String msg, int toastLength) {
+        Toast.makeText(this, msg, toastLength).show();
+    }
+
+    @Override
+    public void failedToConnect(String errorMsg) {
+        scheduleGuiTask(() -> {
+            showToast("Failed To Connect.\n" + errorMsg, Toast.LENGTH_SHORT);
+            retryConnectionBtn.setEnabled(true);
+        });
+    }
+
+    @Override
+    public void connectionEstablished(Socket socket) {
+        scheduleGuiTask(() -> {
+            retryConnectionBtn.setEnabled(false);
+        });
+    }
+
+    @Override
+    public void connectionLost(Socket socket) {
+        scheduleGuiTask(() -> {
+            findViewById(R.id.pilotLayout).setVisibility(View.GONE);
+            showToast("Connection Lost.", Toast.LENGTH_LONG);;
+        });
+    }
+
+    @Override
+    public void authSucceeded() {
+        scheduleGuiTask(() -> findViewById(R.id.pilotLayout).setVisibility(View.VISIBLE));
+    }
+
+    @Override
+    public void authFailed() {
+        // pass
     }
 }

@@ -35,7 +35,9 @@ class StreamMsgHandler(MsgHandler, ConnectionStateObserver):
         if code == MsgCode.MOVE_SCREEN:
             self.streamer.move_screen(data['dx'], data['dy'])
         elif code == MsgCode.CLICK:
-            self.streamer.click(data['x'], data['y'])
+            self.streamer.click(data['x'], data['y'], data['button'])
+        elif code == MsgCode.DOUBLE_CLICK:
+            self.streamer.double_click(data['x'], data['y'], data['button'])
         elif code == MsgCode.CHANGE_MONITOR:
             self.streamer.change_monitor()
         elif code == MsgCode.RESCALE:

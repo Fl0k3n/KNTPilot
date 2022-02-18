@@ -1,9 +1,11 @@
 package com.example.pilot.networking.udp;
 
+import androidx.annotation.GuardedBy;
+
 import java.util.Optional;
 
 public class FragmentAssembler implements StreamSkippedObserver {
-    private FragmentBuffer fragmentBuffer;
+    @GuardedBy("this") private FragmentBuffer fragmentBuffer;
     private final boolean requiresFragmentation;
 
     public FragmentAssembler(boolean requiresFragmentation) {
@@ -26,7 +28,7 @@ public class FragmentAssembler implements StreamSkippedObserver {
         return handleFragmentedDatagram(packet, length);
     }
 
-    private Optional<MediaFrame> handleFragmentedDatagram(byte[] packet, int length) {
+    private synchronized Optional<MediaFrame> handleFragmentedDatagram(byte[] packet, int length) {
         int seqNum = MediaFrame.extractSeqNum(packet);
 
         MediaFrame alreadyPresentFrame = fragmentBuffer.get(seqNum);
@@ -60,11 +62,11 @@ public class FragmentAssembler implements StreamSkippedObserver {
     }
 
     @Override
-    public void onSkippedTo(int seqNum) {
+    public synchronized void onSkippedTo(int seqNum) {
         fragmentBuffer.removePreceding(seqNum);
     }
 
-    public void clearBuffer() {
+    public synchronized void clearBuffer() {
         this.fragmentBuffer = new FragmentBuffer();
     }
 }

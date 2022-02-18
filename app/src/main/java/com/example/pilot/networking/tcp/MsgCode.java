@@ -16,7 +16,8 @@ public enum MsgCode {
     MUTE,
     UNMUTE,
     UDP_SECRET,
-    UDP_SECRET_ACK;
+    UDP_SECRET_ACK,
+    DOUBLE_CLICK;
 
 
     public static MsgCode fromInteger(int x) {
@@ -35,6 +36,7 @@ public enum MsgCode {
             case 11: return UNMUTE;
             case 12: return UDP_SECRET;
             case 13: return UDP_SECRET_ACK;
+            case 14: return DOUBLE_CLICK;
             default:
                 throw new IllegalArgumentException("code [" + x + "] is not supported");
         }

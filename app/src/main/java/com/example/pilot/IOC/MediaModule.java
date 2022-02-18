@@ -1,15 +1,17 @@
 package com.example.pilot.IOC;
 
+import android.widget.EditText;
 import android.widget.ImageView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.pilot.networking.tcp.MessageSender;
+import com.example.pilot.ui.controller.MenuController;
 import com.example.pilot.ui.utils.FPSCounter;
 import com.example.pilot.ui.utils.GuiRunner;
+import com.example.pilot.ui.utils.ImageViewController;
 import com.example.pilot.ui.utils.SoundPlayer;
 import com.example.pilot.ui.utils.VideoPlayer;
-import com.example.pilot.ui.views.ImageViewer;
 
 import java.util.concurrent.TimeUnit;
 
@@ -27,31 +29,23 @@ public class MediaModule {
     private final GuiRunner guiRunner;
     private final ImageView imageView;
     private final AppCompatActivity activity;
+    private final EditText keyboardInput;
 
-    public MediaModule(GuiRunner guiRunner, ImageView imageView, AppCompatActivity activity) {
+    public MediaModule(GuiRunner guiRunner, ImageView imageView,
+                       AppCompatActivity activity, EditText keyboardInput)
+    {
         this.guiRunner = guiRunner;
         this.imageView = imageView;
         this.activity = activity;
+        this.keyboardInput = keyboardInput;
     }
 
 
     @Provides
     @Singleton
-    public ImageViewer provideImageViewer(MessageSender messageSender) {
-        return new ImageViewer(activity, imageView) {
-
-            @Override
-            public void onSwipe(float real_dx, float real_dy) {
-                messageSender.sendSwipeMessage(real_dx, real_dy);
-            }
-
-            @Override
-            public void onClick(float x, float y) {
-                messageSender.sendClickMessage(x, y);
-            }
-        };
+    public ImageViewController provideImageViewer(MessageSender messageSender, MenuController menuController) {
+        return new ImageViewController(activity, imageView, messageSender, menuController);
     }
-
 
     @Provides
     @Singleton
@@ -61,8 +55,8 @@ public class MediaModule {
 
     @Provides
     @Singleton
-    public VideoPlayer provideVideoPlayer(FPSCounter fpsCounter, ImageViewer imageViewer) {
-        return new VideoPlayer(guiRunner, imageViewer, fpsCounter, MAX_VIDEO_FPS);
+    public VideoPlayer provideVideoPlayer(FPSCounter fpsCounter, ImageViewController imageViewController) {
+        return new VideoPlayer(guiRunner, imageViewController, fpsCounter, MAX_VIDEO_FPS);
     }
 
     @Provides
@@ -105,4 +99,11 @@ public class MediaModule {
     public GuiRunner provideGuiRunner() {
         return guiRunner;
     }
+
+    @Provides
+    @Named("keyboard")
+    public EditText provideKeyboardInput() {
+        return keyboardInput;
+    }
+
 }

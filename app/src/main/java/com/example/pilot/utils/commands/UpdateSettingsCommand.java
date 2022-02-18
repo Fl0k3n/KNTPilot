@@ -1,26 +1,26 @@
 package com.example.pilot.utils.commands;
 
-import com.example.pilot.ui.views.SettingsHandler;
+import com.example.pilot.ui.controller.SettingsController;
 import com.example.pilot.networking.tcp.ConnectionHandler;
 import com.example.pilot.utils.PreferencesLoader;
 
 public class UpdateSettingsCommand implements Command {
     private final ConnectionHandler connectionHandler;
     private final PreferencesLoader preferencesLoader;
-    private final SettingsHandler settingsHandler;
+    private final SettingsController settingsController;
 
     public UpdateSettingsCommand(ConnectionHandler handler,
                                  PreferencesLoader preferencesLoader,
-                                 SettingsHandler settingsHandler) {
+                                 SettingsController settingsController) {
         this.connectionHandler = handler;
         this.preferencesLoader = preferencesLoader;
-        this.settingsHandler = settingsHandler;
+        this.settingsController = settingsController;
     }
 
     @Override
     public void execute() {
-        String ipAddr = settingsHandler.getIpAddr();
-        Integer port = settingsHandler.getPortNumber();
+        String ipAddr = settingsController.getIpAddr();
+        Integer port = settingsController.getPortNumber();
 
         if (ipAddr != null)
             preferencesLoader.saveIpAddr(ipAddr);

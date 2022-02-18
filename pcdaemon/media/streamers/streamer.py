@@ -68,9 +68,13 @@ class Streamer(ConnectionStateObserver):
     def move_screen(self, dx: int, dy: int):
         self.ss_capturer.move_screen(dx, dy)
 
-    def click(self, x: float, y: float):
+    def click(self, x: float, y: float, button: str):
         mon_x, mon_y = self.ss_capturer.get_ss_view_topleft()
-        self.input_ctl.click(mon_x + x, mon_y + y)
+        self.input_ctl.click(mon_x + x, mon_y + y, button)
+
+    def double_click(self, x: float, y: float, button: str):
+        mon_x, mon_y = self.ss_capturer.get_ss_view_topleft()
+        self.input_ctl.double_click(mon_x + x, mon_y + y, button)
 
     def change_monitor(self):
         self.ss_capturer.change_monitor()

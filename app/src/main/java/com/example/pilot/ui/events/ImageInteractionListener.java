@@ -5,10 +5,12 @@ import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 
-public abstract class ImageSwipeListener implements View.OnTouchListener {
+import java.util.LinkedList;
+
+public abstract class ImageInteractionListener implements View.OnTouchListener {
     private final GestureDetector gestureDetector;
 
-    public ImageSwipeListener(Context ctx) {
+    public ImageInteractionListener(Context ctx) {
         gestureDetector = new GestureDetector(ctx, new GestureListener());
     }
 
@@ -43,18 +45,18 @@ public abstract class ImageSwipeListener implements View.OnTouchListener {
 
         @Override
         public boolean onSingleTapConfirmed(MotionEvent event) {
-            System.out.printf("tapped XY = (%f, %f)\n", event.getX(), event.getY());
             onClick(event.getX(), event.getY());
             return true;
         }
 
-        // TODO
-//        @Override
-//        public boolean onDoubleTap(MotionEvent event) {
-//            return true;
-//        }
+        @Override
+        public boolean onDoubleTap(MotionEvent event) {
+            onDoubleClick(event.getX(), event.getY());
+            return true;
+        }
     }
 
     public abstract void onSwipe(float x0, float y0, float x1, float y1);
     public abstract void onClick(float x, float y);
+    public abstract void onDoubleClick(float x, float y);
 }

@@ -4,6 +4,7 @@ import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
+import android.util.Log;
 
 import androidx.annotation.GuardedBy;
 
@@ -20,6 +21,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 public class SoundPlayer implements MediaPlayer {
+    private static final String TAG = "Sound Player";
     private static final int QUEUE_CAPACITY = 1;
     private final BlockingQueue<MediaFrame> buffer;
     @GuardedBy("this") private final AudioTrack audioTrack;
@@ -76,7 +78,7 @@ public class SoundPlayer implements MediaPlayer {
 
     private void initPlayerTask() {
         playerTask = executorService.submit(() -> {
-            System.out.println("Sound player started");
+            Log .i(TAG, "Sound player started");
             synchronized (this) {
                 audioTrack.flush();
                 audioTrack.play();
@@ -90,6 +92,7 @@ public class SoundPlayer implements MediaPlayer {
                         audioTrack.write(bytes, 0, bytes.length);
                     }
                 } catch (InterruptedException e) {
+                    Log.d(TAG, "Sound player interrupted, exiting");
                     break;
                 }
             }
@@ -118,7 +121,10 @@ public class SoundPlayer implements MediaPlayer {
         setMuted(true);
         if (playerTask != null) {
             if (playerTask.cancel(true)) {
-                System.out.println("Sound player stopped");
+                Log.d(TAG, "Sound player stopped");
+            }
+            else {
+                Log.w(TAG, "Failed to stop sound player");
             }
             playerTask = null;
         }

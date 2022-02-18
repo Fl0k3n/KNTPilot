@@ -2,6 +2,9 @@ package com.example.pilot.ui.utils;
 
 import android.view.MenuItem;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
@@ -13,7 +16,9 @@ public class FpsUpdater {
     private final GuiRunner guiRunner;
     private final FPSCounter fpsCounter;
     private long updateEveryMs;
-    private Thread updaterThread;
+
+    private final ExecutorService executorService;
+    private Future<?> updaterTask;
 
     @Inject
     public FpsUpdater(GuiRunner guiRunner, FPSCounter fpsCounter,
@@ -22,7 +27,7 @@ public class FpsUpdater {
     {
         this.guiRunner = guiRunner;
         this.fpsCounter = fpsCounter;
-        updaterThread = null;
+        this.executorService = Executors.newSingleThreadExecutor();
 
         this.updateEveryMs = TimeUnit.MILLISECONDS.convert(updateEvery, timeUnit);
         if (this.updateEveryMs < 250)
@@ -30,7 +35,7 @@ public class FpsUpdater {
     }
 
     public void start(MenuItem fpsBox) {
-        updaterThread = new Thread(() -> {
+        updaterTask = executorService.submit(() -> {
             while (true) {
                 try {
                     Thread.sleep(updateEveryMs);
@@ -45,14 +50,12 @@ public class FpsUpdater {
                     return;
             }
         });
-
-        updaterThread.start();
     }
 
     public void stop() {
-        if (updaterThread != null) {
-            updaterThread.interrupt();
-            updaterThread = null;
+        if (updaterTask != null) {
+            updaterTask.cancel(true);
+            updaterTask = null;
         }
     }
 }
