@@ -66,3 +66,6 @@ class Session:
 
     def get_udp_peer_addr(self) -> Tuple[str, int]:
         return self.udp_peer_ip, self.udp_peer_port
+
+    def __str__(self) -> str:
+        return f'[Peer: {self.tcp_sock.getpeername()} - {self.session_state} - authenticated: {self.authenticated}]'

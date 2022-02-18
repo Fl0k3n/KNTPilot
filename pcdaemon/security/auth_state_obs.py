@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from security.session import Session
+from networking.session import Session
 
 
 class AuthStateObserver(ABC):

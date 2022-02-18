@@ -1,20 +1,20 @@
-from socket import socket
+import logging
 import threading
-from typing import Iterable
 import atexit
+from typing import Iterable
 from networking.abstract.conn_state_obs import ConnectionStateObserver
 from media.sound_capturer import SoundCapturer
 from media.streamers.sound_streamer import SoundStreamer
-from networking.abstract.sender import Sender
+from networking.abstract.media_sender import MediaSender
 from media.streamers.video_streamer import VideoStreamer
-from security.session import Session
+from networking.session import Session
 from utils.special_key_codes import KeyboardModifier, SpecialKeyCode
 from media.input_ctl import InputController
 from media.ss_capturer import SSCapturer
 
 
 class Streamer(ConnectionStateObserver):
-    def __init__(self, sender: Sender, ss_capturer: SSCapturer, sound_capturer: SoundCapturer,
+    def __init__(self, sender: MediaSender, ss_capturer: SSCapturer, sound_capturer: SoundCapturer,
                  max_fps: int = 30, max_batch_sent_ss: int = 3) -> None:
         self.sender = sender
         self.ss_capturer = ss_capturer
@@ -31,6 +31,7 @@ class Streamer(ConnectionStateObserver):
         atexit.register(self.stop_streaming)
 
         self.keep_streaming = False
+        self.started_streaming = False
 
         self.secure_channel_estb = False
         self.secure_channel_lock = threading.Lock()
@@ -46,23 +47,26 @@ class Streamer(ConnectionStateObserver):
         with self.secure_channel_lock:
             self.keep_streaming = False
             self.secure_channel_estb = False
+            self.started_streaming = False
             self.secure_channel_cond.notify_all()
 
         self.video_streamer.stop_streaming()
         self.sound_streamer.stop_streaming()
 
-    def stream(self):
-        self.keep_streaming = True
-
+    def await_secure_media_channel(self):
         with self.secure_channel_lock:
             while not self.secure_channel_estb:
                 self.secure_channel_cond.wait()
                 if not self.keep_streaming:
                     return
 
-        print("starting streaming")
+    def stream(self):
+        self.keep_streaming = True
+        self.started_streaming = True
+
+        logging.info("starting streaming")
         self.sound_streamer.stream_sound()
-        # blocking, video is streamed from main thread TODO
+        # blocking, video is streamed from main thread
         self.video_streamer.stream_video()
 
     def move_screen(self, dx: int, dy: int):
@@ -105,8 +109,11 @@ class Streamer(ConnectionStateObserver):
         self.sound_streamer.unmute()
 
     def connection_established(self, session: Session):
+        # nothing todo
         pass
 
     def connection_lost(self, session: Session):
-        self.stop_streaming()
-        self.input_ctl.lock_system()
+        if self.started_streaming:
+            self.stop_streaming()
+            self.input_ctl.lock_system()
+            self.mute_sound()

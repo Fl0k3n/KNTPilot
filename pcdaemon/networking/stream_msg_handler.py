@@ -1,29 +1,28 @@
 import json
-from networking.abstract.conn_state_obs import ConnectionStateObserver
-from security.session import Session
-from utils.auth_state_obs import AuthStateObserver
-from utils.special_key_codes import KeyboardModifier, SpecialKeyCode
+import logging
 from typing import Any
+from networking.abstract.conn_state_obs import ConnectionStateObserver
+from networking.session import Session
+from utils.special_key_codes import KeyboardModifier, SpecialKeyCode
 from utils.msg_codes import MsgCode
 from networking.abstract.msg_handler import MsgHandler
-from utils.authenticator import Authenticator
+from security.authenticator import Authenticator
 from media.streamers.streamer import Streamer
 
 
 class StreamMsgHandler(MsgHandler, ConnectionStateObserver):
-    def __init__(self, auth: Authenticator):
+    def __init__(self, auth: Authenticator, streamer: Streamer):
         super().__init__()
         self.auth = auth
-        self.streamer = None
-        self.session = None
-
-    def set_streamer(self, streamer: Streamer):
         self.streamer = streamer
+        self.session = None
 
     def connection_established(self, session: Session):
         self.session = session
 
     def handle_msg(self, code: MsgCode, data: Any):
+        logging.debug(f'got message code: {code} | data: {data}')
+
         if code == MsgCode.AUTH:
             # authenticator will call its state observers
             self.auth.validate(data['password'], self.session)
@@ -55,15 +54,13 @@ class StreamMsgHandler(MsgHandler, ConnectionStateObserver):
         elif code == MsgCode.UNMUTE:
             self.streamer.unmute_sound()
         elif code == MsgCode.UDP_SECRET_ACK:
-            print("GOT ACK")
             self.streamer.secure_channel_established()
         else:
             raise RuntimeError(
                 f'Received unsupported msg code {code} with data\n{data}')
 
     def rcving_failed(self, err: Exception):
-        print("Lost connection")
-        print(err)
+        logging.info("Lost connection", exc_info=True)
         session = self.session
         for obs in self.conn_state_obss:
             obs.connection_lost(session)

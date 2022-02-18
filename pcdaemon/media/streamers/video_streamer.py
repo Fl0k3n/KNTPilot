@@ -1,3 +1,4 @@
+import logging
 import threading
 from networking.abstract.ss_sender import SsSender
 from media.ss_capturer import SSCapturer
@@ -13,10 +14,11 @@ class VideoStreamer:
         self.fps_ctl = FpsController(self.max_fps)
 
         self.keep_streaming = False
+        # guards sent_overhead and keep_streaming variable
         self.stream_lock = threading.Lock()
 
         self.sent_overhead = 0  # how many sshots were sent without confirmation
-        self.ss_rcvd_lock = threading.Lock()
+        self.ss_rcvd_lock = threading.Lock()  # guards number of ss sent
         self.ss_rcvd_cond = threading.Condition(self.ss_rcvd_lock)
 
     def stop_streaming(self):
@@ -38,25 +40,24 @@ class VideoStreamer:
 
         with self.ss_capturer:
             while True:
+                # TODO
                 # with self.ss_rcvd_lock:
                 #     while self.keep_streaming and self.sent_overhead >= self.max_batch_sent_ss:
                 #         self.ss_rcvd_cond.wait()
 
                 #     self.sent_overhead += 1
 
-                # ss_b64 = self.ss_capturer.get_ss_base64()
                 ss_bytes = self.ss_capturer.get_ss_bytes()
                 with self.stream_lock:
                     if not self.keep_streaming:
                         raise ConnectionError('Stream interrupted')
 
                 # throws connection error on lost connection
-                # self.sender.send_ss(ss_b64)
                 self.sender.send_ss_bytes(ss_bytes)
 
                 self.fps_ctl.frame_sent()
                 fps = self.fps_ctl.wait_when_legal()
-                print(f'FPS ~ {fps}')
+                logging.debug(f'FPS ~ {fps}')
 
     def ss_rcvd(self):
         with self.ss_rcvd_lock:

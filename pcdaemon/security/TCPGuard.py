@@ -1,7 +1,7 @@
 from security.guard import Guard
 from Crypto.Cipher import AES
 
-from security.session import Session
+from networking.session import Session
 
 
 class TCPGuard(Guard):

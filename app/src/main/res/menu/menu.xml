@@ -47,6 +47,7 @@
         android:title="Shift ON" />
     <item
         android:id="@+id/rightMouseON"
-        android:title="Right Mouse ON" />
+        android:title="Right Mouse ON"
+        android:visible="false" />
 
 </menu>

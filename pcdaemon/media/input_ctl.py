@@ -1,11 +1,11 @@
-from typing import List
+import logging
 import pyautogui
+from typing import List
 
 
 class InputController:
     def click(self, x: float, y: float, button: str):
         prev_x, prev_y = pyautogui.position()
-        print("BUTTON: ", button)
         pyautogui.click(x, y, button=button)
         # pyautogui.moveTo(prev_x, prev_y)
 
@@ -21,9 +21,8 @@ class InputController:
         else:
             try:
                 pyautogui.press(key)
-            except Exception as e:
-                print(f"failed to press key ->{key}<-")
-                print(e)
+            except Exception:
+                logging.exception(f"failed to press key ->{key}<-")
 
         for modifier in reversed(modifiers):
             pyautogui.keyUp(modifier)

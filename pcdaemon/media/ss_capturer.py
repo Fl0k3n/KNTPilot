@@ -1,12 +1,9 @@
-from typing import Tuple
+import logging
 import mss
 import io
+from typing import Tuple
 from PIL import Image
-import base64
 from threading import Lock
-
-# TODO send raw instead of base64
-# remove rescaling, always send full size
 
 
 class SSCapturer:
@@ -23,11 +20,8 @@ class SSCapturer:
         self.monitor_offset_x = None
         self.screen_w, self.screen_h = None, None
 
-        self.screen_settings_lock = Lock()
+        self.screen_settings_lock = Lock()  # guards screen settings
         self.sct = None
-
-    def get_ss_base64(self) -> str:
-        return base64.b64encode(self.get_ss_bytes()).decode('utf-8')
 
     def get_ss_bytes(self) -> bytes:
         with self.screen_settings_lock:
@@ -35,10 +29,6 @@ class SSCapturer:
                    "width": self.ss_witdth, "height": self.ss_height,
                    "mon":   self.sct.monitors[self.streamed_screen_num]}
 
-            print('capturing  ', mon)
-            print()
-
-        # im = self.sct.grab(self.sct.monitors[1])
         im = self.sct.grab(mon)
 
         img = Image.frombytes("RGB", im.size, im.bgra, "raw", "BGRX")
@@ -74,7 +64,6 @@ class SSCapturer:
             self._fix_bounds()
 
     def get_monitor_num(self) -> int:
-        # not needed here, left for consistency
         with self.screen_settings_lock:
             return self.streamed_screen_num
 

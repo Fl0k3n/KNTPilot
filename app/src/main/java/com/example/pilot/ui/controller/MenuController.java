@@ -95,6 +95,7 @@ public class MenuController implements ConnectionStatusObserver, AuthStatusObser
                 R.id.muteBtn
         };
         Arrays.stream(items).forEach(id -> menu.findItem(id).setVisible(!hidden));
+        menu.findItem(R.id.rightMouseON).setVisible(!hidden);
     }
 
     public void changeModifierLabel(KeyboardModifier modifier, boolean isEnabled) {
@@ -110,7 +111,7 @@ public class MenuController implements ConnectionStatusObserver, AuthStatusObser
 
     private void setDefaultMenuOptions() {
         changeMuteIcon(true);
-        rightMouseOn = false;
+        setRightMouse(false);
 
         for (KeyboardModifier modifier :
                 KeyboardModifier.values()) {

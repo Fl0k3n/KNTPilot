@@ -2,12 +2,13 @@ import atexit
 import socket
 from socket import AF_INET, SOCK_DGRAM
 from networking.abstract.conn_state_obs import ConnectionStateObserver
-from networking.media_sender import DataSender
+from networking.abstract.media_sender import MediaSender
+from networking.data_sender import DataSender
 from security.message_security_preprocessor import MessageSecurityPreprocessor
-from security.session import Session
+from networking.session import Session
 
 
-class MediaHandler(ConnectionStateObserver):
+class MediaHandler(ConnectionStateObserver, MediaSender):
     def __init__(self, ip_addr: str, port: int, msg_security_preproc: MessageSecurityPreprocessor):
         self.ip_addr = ip_addr
         self.port = port
@@ -39,5 +40,5 @@ class MediaHandler(ConnectionStateObserver):
     def send_audio_bytes(self, audio_frame: bytes):
         self.data_sender.send_audio_frame(audio_frame)
 
-    def send_video_bytes(self, video_frame: bytes):
-        self.data_sender.send_video_frame(video_frame)
+    def send_ss_bytes(self, ss: bytes):
+        self.data_sender.send_video_frame(ss)

@@ -1,8 +1,7 @@
 from struct import pack
-from socket import socket
 from typing import Generator
 from security.message_security_preprocessor import MessageSecurityPreprocessor
-from security.session import Session
+from networking.session import Session
 from utils.media_msg_codes import MediaMsgCode
 
 """

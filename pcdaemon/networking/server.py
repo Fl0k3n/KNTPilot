@@ -1,63 +1,39 @@
+import logging
 import socket
 import atexit
-import traceback
-import base64
-from pathlib import Path
-from dotenv import dotenv_values
 from typing import List
-from media.sound_capturer import SoundCapturer
-from networking.media_handler import MediaHandler
-from networking.abstract.sender import Sender
 from networking.abstract.msg_handler import MsgHandler
-from security.UDPGuard import UDPGuard
-from security.asymmetric_security_handler import RSA_AsymmetricSecurityHandler
-from security.key_generator import KeyGenerator
-from security.message_security_preprocessor import MessageSecurityPreprocessor
-from security.session import Session
-from security.session_handler import SessionHandler
-from security.TCPGuard import TCPGuard
+from networking.session_handler import SessionHandler
 from security.tls_handler import TLSHandler
-from utils.auth_state_obs import AuthStateObserver
-from media.ss_capturer import SSCapturer
-from utils.authenticator import Authenticator
+from security.authenticator import Authenticator
 from media.streamers.streamer import Streamer
-from networking.stream_msg_handler import StreamMsgHandler
 from networking.abstract.conn_state_obs import ConnectionStateObserver
-from utils.msg_codes import MsgCode
 from networking.message_sender import MessageSender
-from networking.message_listener import MessageListener
 
 
-# TODO both audio and video should be sent on second socket using UDP
-
-class Server(Sender, AuthStateObserver):
-
+class Server:
     # more is probably pointless and not supported now (and likely never)
     _MAX_CONNECTIONS = 1
 
     def __init__(self, addr: str, tcp_port: int,
                  auth: Authenticator, msg_handler: MsgHandler,
                  tls_handler: TLSHandler, session_handler: SessionHandler,
-                 sender: MessageSender, listener: MessageListener, media_handler: MediaHandler):
+                 sender: MessageSender, streamer: Streamer):
         self._PORT = tcp_port
         self._IP_ADDR = addr
         self.auth = auth
-        self.streamer = None
         self.msg_handler = msg_handler
         self.session_handler = session_handler
-        self.media_handler = media_handler
         self.tls_handler = tls_handler
         self.sender = sender
-        self.listener = listener
+        self.streamer = streamer
 
         self._init_server_socket()
 
-        self.connection_state_observers: List[ConnectionStateObserver] = [
-            self.tls_handler, self.media_handler, self.sender,
-            self.listener, self.auth, self.msg_handler]
+        self.connection_state_observers: List[ConnectionStateObserver] = []
 
-        for obs in self.connection_state_observers:
-            self.msg_handler.add_conn_state_obs(obs)
+    def add_connection_state_observer(self, obs: ConnectionStateObserver):
+        self.connection_state_observers.append(obs)
 
     def _init_server_socket(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -67,111 +43,40 @@ class Server(Sender, AuthStateObserver):
         self.socket.bind((self._IP_ADDR, self._PORT))
         self.socket.listen(self._MAX_CONNECTIONS)
 
-    def listen_for_connection(self, streamer: Streamer):
-        self.streamer = streamer
-        print('Waiting for connection...')
-        self.client, self.client_addr = self.socket.accept()
-        print(f'Connected: {self.client_addr}')
-        self._handle_connection()
+    def _listen_for_connection(self):
+        logging.info('Waiting for connection...')
+        client, client_addr = self.socket.accept()
+        logging.info(f'Connected: {client_addr}')
+        return client
 
-    def _handle_connection(self):
-        session = self.session_handler.create_session(self.client)
+    def _handle_connection(self, client: socket):
+        session = self.session_handler.create_session(client)
 
         for obs in self.connection_state_observers:
             obs.connection_established(session)
 
-        print("waiting for secure channel")
+        logging.info("waiting for secure channel")
         self.tls_handler.await_secure_channel(session)
-        print("ok secure channel estb")
+        logging.info("waiting for user authentication")
         self.auth.await_authentication(session)
-        print("OK auth estb")
-        self.send_media_secret_key(session)
-        print("Media secret key sent")
-        self.msg_handler.add_conn_state_obs(self.streamer)
+        logging.info("auth established, sending media secret key")
+        self.sender.send_media_secret_key(session)
+        logging.info("key sent, waiting for confirmation")
+        self.streamer.await_secure_media_channel()
+        logging.info("staring streaming")
         self.streamer.stream()
 
-    # TODO make server not a sender
-
-    def send_ss(self, ss_base64: str):
-        self.sender.send_json(MsgCode.SSHOT, {'image': ss_base64})
-
-    def send_audio_frame(self, frame64: str):
-        self.sender.send_json(MsgCode.AUDIO_FRAME, {'frame': frame64})
-
-    def send_audio_bytes(self, audio_frame: bytes):
-        self.media_handler.send_audio_bytes(audio_frame)
-
-    def send_ss_bytes(self, ss: bytes):
-        self.media_handler.send_video_bytes(ss)
-
-    def auth_suceeded(self, session: Session):
-        self.sender.send_json(MsgCode.AUTH_CHECKED, {'is_granted': True})
-
-    def auth_failed(self, session: Session):
-        self.sender.send_json(MsgCode.AUTH_CHECKED, {'is_granted': False})
-
-    def send_media_secret_key(self, session: Session):
-        key = session.get_udp_secret_key()
-        encoded_key = base64.b64encode(key).decode('utf-8')
-        self.sender.send_json(MsgCode.UDP_SECRET, {'secret': encoded_key})
-
-
-def main():
-    # TODO IOC
-    path = Path(__file__).parent.joinpath('.env')
-    config = dotenv_values(path)
-
-    auth = Authenticator(config['PASSWORD'])
-    msg_handler = StreamMsgHandler(auth)
-    ss_capturer = SSCapturer()
-
-    asym_handler = RSA_AsymmetricSecurityHandler(
-        Path(config["PRIVATE_KEY_PATH"]))
-
-    tcp_guard = TCPGuard()
-    udp_guard = UDPGuard()
-
-    tcp_preprocessor = MessageSecurityPreprocessor(tcp_guard)
-    udp_preprocessor = MessageSecurityPreprocessor(udp_guard)
-
-    session_handler = SessionHandler()
-    tls_handler = TLSHandler(
-        Path(config['CERTIFICATE_PATH']), msg_handler, tcp_guard, session_handler, asym_handler)
-
-    sender = MessageSender(tcp_preprocessor)
-    listener = MessageListener(tcp_preprocessor, tls_handler, msg_handler)
-
-    sound_args = [int(config['AUDIO_' + arg])
-                  for arg in ('CHUNK_SIZE', 'SAMPLE_RATE', 'CHANNELS')]
-    sound_capturer = SoundCapturer(
-        config['MUTE_ON_START'] == 'false', *sound_args)
-
-    ip_addr = config['IP_ADDR']
-    tcp_port = int(config['TCP_PORT'])
-    udp_port = int(config['UDP_PORT'])
-
-    media_handler = MediaHandler(ip_addr, udp_port, udp_preprocessor)
-
-    server = Server(ip_addr, tcp_port, auth, msg_handler,
-                    tls_handler, session_handler, sender, listener, media_handler)
-    streamer = Streamer(server, ss_capturer, sound_capturer,
-                        max_fps=int(config['MAX_FPS']))
-
-    msg_handler.set_streamer(streamer)
-    auth.add_auth_state_obs(server)
-
-    while True:
-        try:
-            server.listen_for_connection(streamer)
-        except (ConnectionError, BrokenPipeError) as e:
-            print(e)
-            print('LOST CONNECTION')
-            msg_handler.remove_conn_state_obs(streamer)
-            streamer.mute_sound()
-        except Exception as e:
-            traceback.print_exc()
-            break
-
-
-if __name__ == '__main__':
-    main()
+    def serve(self):
+        while True:
+            try:
+                client = self._listen_for_connection()
+                self._handle_connection(client)
+            except (ConnectionError, BrokenPipeError):
+                logging.info("lost connection", exc_info=True)
+            except Exception:
+                logging.critical(
+                    "unexpected exception while handling connection", exc_info=True)
+            finally:
+                if client is not None:
+                    self.session_handler.close_session(client)
+                logging.info("session closed")

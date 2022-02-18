@@ -1,11 +1,13 @@
+import json
 import threading
 from socket import socket
-from typing import Tuple
+from typing import Any, Tuple
 from networking.abstract.msg_handler import MsgHandler
 from security.message_security_preprocessor import MessageSecurityPreprocessor
-from security.session import Session
+from networking.session import Session
 from security.tls_handler import TLSHandler
 from networking.abstract.conn_state_obs import ConnectionStateObserver
+from utils.msg_codes import MsgCode
 
 
 class MessageListener(ConnectionStateObserver):
@@ -42,10 +44,20 @@ class MessageListener(ConnectionStateObserver):
                 packet = self._receive_full_packet(
                     sock, basic_header, msg_size)
 
-                self.tls_handler.handle_tls_message(self.session, packet)
+                if self.session.is_secure():
+                    preprocessed_packet = self.msg_preprocessor.preprocess_received(
+                        self.session, packet)
+                    code, data = self._decode_message(preprocessed_packet)
+                    self.msg_handler.handle_msg(code, data)
+                else:
+                    self.tls_handler.handle_tls_message(self.session, packet)
         except (ConnectionAbortedError, ConnectionResetError) as e:
             self.msg_handler.rcving_failed(e)
             return
+
+    def _decode_message(self, data: bytes) -> Tuple[MsgCode, Any]:
+        msg = json.loads(data.decode('utf-8'))
+        return MsgCode(msg['code']), msg['body']
 
     def _receive_basic_header(self, sock: socket) -> Tuple[bytes, int]:
         # returns basic header and size of data that still needs to be received for this packet

@@ -1,8 +1,9 @@
+import logging
 import bcrypt
 import threading
 from typing import List
-from security.session import Session
-from utils.auth_state_obs import AuthStateObserver
+from networking.session import Session
+from security.auth_state_obs import AuthStateObserver
 from networking.abstract.conn_state_obs import ConnectionStateObserver
 
 
@@ -21,6 +22,8 @@ class Authenticator(ConnectionStateObserver):
     def validate(self, password: str, session: Session):
         is_valid = bcrypt.checkpw(
             password.encode(encoding='utf-8'), self.pswd)
+
+        logging.info(f'{session} auth {"succeded" if is_valid else "failed"}')
 
         with self.auth_lock:
             session.set_auth_state(is_valid)

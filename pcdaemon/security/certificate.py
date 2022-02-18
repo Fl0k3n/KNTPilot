@@ -1,6 +1,7 @@
 import base64
 import json
 from datetime import date
+from pathlib import Path
 from security.primitives import AsymmetricAlgorithm, AsymmetricParams, SignatureAlgorithm, PublicKey, SignatureParams
 
 
@@ -32,8 +33,8 @@ class Certificate:
     def encode(self) -> bytes:
         return base64.b64encode(self._convert_to_json().encode('utf-8'))
 
-    def save_as_json(self, filename: str):
-        with open(filename, 'w') as f:
+    def save_as_json(self, path: Path):
+        with open(path, 'w') as f:
             f.write(self._convert_to_json())
 
     def _convert_to_json(self) -> str:

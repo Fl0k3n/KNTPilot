@@ -16,7 +16,7 @@ class MsgHandler(ABC):
     def rcving_failed(self, err: Exception):
         pass
 
-    def add_conn_state_obs(self, obs: ConnectionStateObserver):
+    def add_connection_state_observer(self, obs: ConnectionStateObserver):
         self.conn_state_obss.append(obs)
 
     def remove_conn_state_obs(self, obs: ConnectionStateObserver):

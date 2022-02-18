@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from Crypto.Random import get_random_bytes
 
-from security.session import Session
+from networking.session import Session
 
 
 class Guard(ABC):

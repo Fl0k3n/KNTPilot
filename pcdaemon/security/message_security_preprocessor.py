@@ -1,6 +1,7 @@
+import base64
 from security.guard import Guard
 from security.key_generator import KeyGenerator
-from security.session import Session
+from networking.session import Session
 from security.tls_packet import TLSPacket
 from utils.msg_codes import TLSCode
 
@@ -24,6 +25,7 @@ class MessageSecurityPreprocessor:
     def preprocess_received(self, session: Session, received_message: bytes) -> bytes:
         tls_packet = TLSPacket.build_from_raw(received_message)
 
+        assert tls_packet.code == TLSCode.SECURE, "preprocessor got unsecure packet"
         assert len(tls_packet.nonce) == self.guard.get_nonce_length()
 
         return self.guard.decrypt(
@@ -40,3 +42,6 @@ class MessageSecurityPreprocessor:
 
     def generate_key(self) -> bytes:
         return KeyGenerator.generate_secret_key(self.get_key_length())
+
+    def encode_media_secret_key(self, session: Session) -> str:
+        return base64.b64encode(session.get_udp_secret_key()).decode('utf-8')

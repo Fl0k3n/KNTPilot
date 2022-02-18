@@ -3,7 +3,7 @@ from cv2 import circle
 from security.guard import Guard
 from Crypto.Cipher import ChaCha20_Poly1305
 
-from security.session import Session
+from networking.session import Session
 
 
 class UDPGuard(Guard):

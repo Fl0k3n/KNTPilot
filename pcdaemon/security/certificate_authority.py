@@ -1,4 +1,6 @@
+import logging
 from datetime import date
+from pathlib import Path
 from dateutil.relativedelta import relativedelta
 from security.certificate import Certificate
 from security.key_generator import KeyGenerator
@@ -14,9 +16,9 @@ class CertificateAuthority:
     SALT_LEN = 20
     VALID_FOR_YEARS = 1
 
-    def __init__(self, CA_public_key_filename: str, CA_private_key_filename: str, CA_keys_params: RSA_AsymmetricParams):
-        self.CA_public_key_filename = CA_public_key_filename
-        self.CA_private_key_filename = CA_private_key_filename
+    def __init__(self, CA_public_key_path: Path, CA_private_key_path: Path, CA_keys_params: RSA_AsymmetricParams):
+        self.CA_public_key_path = CA_public_key_path
+        self.CA_private_key_path = CA_private_key_path
         self.CA_keys_params = CA_keys_params
 
         self._setup_signature_params()
@@ -30,11 +32,11 @@ class CertificateAuthority:
 
     def _load_CA_keys(self) -> RSA.RsaKey:
         try:
-            return KeyGenerator.load_RSA_key(self.CA_private_key_filename)
+            return KeyGenerator.load_RSA_key(self.CA_private_key_path)
         except FileNotFoundError:
-            print(
-                f'CA keys not found, generating new to {self.CA_private_key_filename}')
-            return KeyGenerator.generate_RSA_key(self.CA_public_key_filename, self.CA_private_key_filename,
+            logging.warn(
+                f'CA keys not found, generating new to {self.CA_private_key_path}')
+            return KeyGenerator.generate_RSA_key(self.CA_public_key_path, self.CA_private_key_path,
                                                  self.CA_keys_params.get_key_bit_len())
 
     def _sign_certificate(self, cert: Certificate) -> bytes:
