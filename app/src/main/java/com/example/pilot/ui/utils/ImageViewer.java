@@ -17,7 +17,7 @@ public abstract class ImageViewer {
 
     public ImageViewer(Context ctx, ImageView imageView) {
         this.view = imageView;
-        real_img_w = real_img_h = null;
+        real_img_w = real_img_h = 1;
         imageInteractionObservers = new LinkedList<>();
 
         this.view.setOnTouchListener(createImageInteractionListener(ctx));

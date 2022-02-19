@@ -71,6 +71,6 @@ public class UserInputController implements ConnectionStatusObserver, KeyboardIn
     @Override
     public void onInteractionDetected() {
         // for better responsiveness ignore already partially stored frames
-        mediaReceiver.clearFragmentBuffer(videoStreamHandler.getMediaType());
+//        mediaReceiver.clearFragmentBuffer(videoStreamHandler.getMediaType());
     }
 }

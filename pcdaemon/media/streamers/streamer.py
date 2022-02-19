@@ -50,8 +50,9 @@ class Streamer(ConnectionStateObserver):
             self.started_streaming = False
             self.secure_channel_cond.notify_all()
 
-        self.video_streamer.stop_streaming()
+        logging.info("stopping media streamers")
         self.sound_streamer.stop_streaming()
+        self.video_streamer.stop_streaming()
 
     def await_secure_media_channel(self):
         with self.secure_channel_lock:

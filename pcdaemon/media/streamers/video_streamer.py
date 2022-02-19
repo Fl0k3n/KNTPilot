@@ -29,6 +29,8 @@ class VideoStreamer:
         with self.ss_rcvd_lock:
             self.ss_rcvd_cond.notify_all()  # if its blocked waiting for confirmation
 
+        logging.info("video streamer stopped")
+
     def stream_video(self):
         # possible race condition if stop_streaming is called before
         # this lock is acquired, not dangerous for now TODO

@@ -136,4 +136,16 @@ public class SoundPlayer implements MediaPlayer {
         setMuted(false);
         initPlayerTask();
     }
+
+
+    // TODO
+    @Override
+    public void onOverrunDetected() {
+
+    }
+
+    @Override
+    public void onUnderrunDetected() {
+
+    }
 }

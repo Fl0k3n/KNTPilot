@@ -41,7 +41,7 @@ max_fps = int(config['MAX_FPS'])
 
 def setup_logger():
     logger_format = '[%(filename)s:%(lineno)d] %(levelname)-8s %(message)s'
-    logging.basicConfig(level=logging.DEBUG, format=logger_format)
+    logging.basicConfig(level=logging.INFO, format=logger_format)
 
 
 @click.group()

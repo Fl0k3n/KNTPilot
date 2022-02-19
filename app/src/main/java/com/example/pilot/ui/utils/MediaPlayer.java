@@ -14,4 +14,10 @@ public interface MediaPlayer {
     void stop();
 
     void start();
+
+    // has to be thread safe
+    void onOverrunDetected();
+
+    // has to be thread safe
+    void onUnderrunDetected();
 }

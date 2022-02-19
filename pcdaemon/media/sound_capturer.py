@@ -62,6 +62,7 @@ class SoundCapturer:
     def stop_capturing(self):
         with self.capture_lock:
             self.keep_capturing = False
+            self.running = False
             self.capture_mode_changed.notify_all()
 
     def change_capture_mode(self, capture: bool):

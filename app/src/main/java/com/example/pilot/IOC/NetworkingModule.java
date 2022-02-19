@@ -17,8 +17,8 @@ import dagger.Provides;
 
 @Module
 public class NetworkingModule {
-    private static final int AUDIO_PREFETCH_MS = 256;
-    private static final int VIDEO_PREFETCH_MS = 256;
+    private static final int AUDIO_PREFETCH_MS = 128;
+    private static final int VIDEO_PREFETCH_MS = 128;
 
 
     private final String serverIpAddr;

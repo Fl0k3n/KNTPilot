@@ -21,7 +21,7 @@ public class FragmentBuffer {
     private int lastFullyRcvdInOrderSeq;
     private int size;
 
-    public FragmentBuffer() {
+    public FragmentBuffer(int lastFullyRcvdInOrderSeq) {
         this.head = this.tail = null;
         this.lastFullyRcvdInOrderSeq = -1;
         this.size = 0;
@@ -131,4 +131,9 @@ public class FragmentBuffer {
         return size;
     }
 
+    public int getLastSeq() {
+        if (tail != null)
+            return tail.getSeqNum();
+        return lastFullyRcvdInOrderSeq;
+    }
 }

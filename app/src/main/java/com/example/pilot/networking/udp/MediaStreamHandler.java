@@ -86,7 +86,7 @@ public class MediaStreamHandler {
     private void restartBuffer() {
         try {
             consumerLock.lock();
-            buffer = new MediaFramesBuffer(4 * prefetchFrameAmount);
+            buffer = new MediaFramesBuffer(BUFFER_SIZE_MULTIPLIER * prefetchFrameAmount);
         } finally {
             consumerLock.unlock();
         }
@@ -121,11 +121,13 @@ public class MediaStreamHandler {
     // caller should hold buffer lock
     private boolean shouldFinishPrefetch() {
         return buffer.getConsecutiveFilledSize() >= prefetchFrameAmount ||
-                System.currentTimeMillis() - recvStartedAt > bufferPrefetchMs * 1.5;
+                System.currentTimeMillis() - recvStartedAt > bufferPrefetchMs * PREFETCH_TIME_MULTIPLIER;
     }
 
     // caller should hold buffer lock
     private void handleOverrun() {
+        mediaPlayer.onOverrunDetected();
+
         if (buffer.getFilledSize() < prefetchFrameAmount) {
             restart();
         }
@@ -163,6 +165,7 @@ public class MediaStreamHandler {
                     }
                     else {
                         Log.i(TAG,"[" + getMediaType() + "] " +"BUFFER UNDERRUN");
+                        mediaPlayer.onUnderrunDetected();
                     }
                 } catch (InterruptedException interruptedException) {
                     Log.d(TAG, "[" + getMediaType() + "] " +"Media consumer interrupted, exiting.");

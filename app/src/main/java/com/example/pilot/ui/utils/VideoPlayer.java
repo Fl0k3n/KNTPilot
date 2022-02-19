@@ -15,9 +15,11 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class VideoPlayer implements MediaPlayer {
     private static final String TAG = "Video Player";
     private static final int QUEUE_CAPACITY = 1;
+    private static final int MAX_UNDER_OVER_RUN_DELTA = 30;
+    private static final int MIN_UNDER_OVER_RUN_DELTA = 5;
 
-    private final int max_fps;
-    private final long perfectFrameTimeMs;
+    private final int maxFps;
+    private final int maxSleepTimeMs;
     private final GuiRunner guiRunner;
     private final ImageViewController imageViewer;
     private final BlockingQueue<MediaFrame> buffer;
@@ -26,15 +28,21 @@ public class VideoPlayer implements MediaPlayer {
     private final ExecutorService executorService;
     private Future<?> playerTask;
 
+    // corectness isn't as crucial as efficiency here
+    private volatile int underrunOverrunDelta;
 
-    public VideoPlayer(GuiRunner guiRunner, ImageViewController imageViewer, FPSCounter fpsCounter, int max_fps) {
+    private int lastDisplayedSeq;
+
+    public VideoPlayer(GuiRunner guiRunner, ImageViewController imageViewer, FPSCounter fpsCounter, int maxFps) {
         this.guiRunner = guiRunner;
         this.imageViewer = imageViewer;
         this.fpsCounter = fpsCounter;
-        this.max_fps = max_fps;
-        this.perfectFrameTimeMs = 1000 / max_fps;
+        this.maxFps = maxFps;
+        this.maxSleepTimeMs = 1000 / maxFps;
         buffer = new LinkedBlockingQueue<>(QUEUE_CAPACITY);
         executorService = Executors.newSingleThreadExecutor();
+        lastDisplayedSeq = -1;
+        underrunOverrunDelta = 15;
     }
 
 
@@ -45,7 +53,7 @@ public class VideoPlayer implements MediaPlayer {
 
     @Override
     public float getFrameTimeSpanMs() {
-        return 1.0f / max_fps * 1000;
+        return 1.0f / maxFps * 1000;
     }
 
     @Override
@@ -56,7 +64,23 @@ public class VideoPlayer implements MediaPlayer {
     @Override
     public synchronized void start() {
         fpsCounter.reset();
+        lastDisplayedSeq = -1;
         initPlayerTask();
+    }
+
+    @Override
+    public void onOverrunDetected() {
+        int tmp = underrunOverrunDelta;
+        if (tmp > MIN_UNDER_OVER_RUN_DELTA)
+            underrunOverrunDelta = tmp - 1;
+    }
+
+    @Override
+    public void onUnderrunDetected() {
+        int tmp = underrunOverrunDelta;
+        if (tmp < MAX_UNDER_OVER_RUN_DELTA)
+            underrunOverrunDelta = tmp + 1;
+
     }
 
     @Override
@@ -94,17 +118,18 @@ public class VideoPlayer implements MediaPlayer {
 
     private void displayFrame(MediaFrame mediaFrame) {
         final ScreenShot screenShot = new ScreenShot(mediaFrame.getBytes());
-        guiRunner.scheduleGuiTask(() -> imageViewer.updateImage(screenShot));
-        fpsCounter.onFrameDisplayed();
+        guiRunner.scheduleGuiTask(() -> {
+            int seqNum = mediaFrame.getSeqNum();
+            if (lastDisplayedSeq < seqNum) {
+                lastDisplayedSeq = seqNum;
+                imageViewer.updateImage(screenShot);
+            }
+        });
     }
 
     private void waitBeforeNextFrame() throws InterruptedException {
-        // TODO
         long estimatedFrameTime = fpsCounter.getFrameTimeApproxMs();
-        Thread.sleep(perfectFrameTimeMs);
-//        if (estimatedFrameTime > perfectFrameTimeMs)
-//            Thread.sleep(estimatedFrameTime - 3 * perfectFrameTimeMs / 4);
-//        else
-//            Thread.sleep(perfectFrameTimeMs / 2);
+        float sleepTimeCoefficient = 1.0f + underrunOverrunDelta * 0.01f;
+        Thread.sleep((long)(Math.min(maxSleepTimeMs, estimatedFrameTime * sleepTimeCoefficient)));
     }
 }

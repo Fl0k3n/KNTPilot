@@ -7,6 +7,7 @@ import com.example.pilot.networking.tcp.MsgCode;
 import com.example.pilot.security.MessageSecurityPreprocessor;
 import com.example.pilot.security.exceptions.AuthenticationException;
 import com.example.pilot.security.exceptions.SecurityException;
+import com.example.pilot.ui.utils.FPSCounter;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -14,8 +15,6 @@ import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -41,14 +40,18 @@ public class MediaReceiver implements ConnectionStatusObserver {
     private final ExecutorService executorService;
     private Future<?> receiverTask;
 
+    private final FPSCounter fpsCounter;
+
 
     @Inject
     public MediaReceiver(@Named("client udp port") int port,
                          @Named("UDP preprocessor") MessageSecurityPreprocessor securityPreprocessor,
-                         @Named("receiver executor") ExecutorService executorService)
+                         @Named("receiver executor") ExecutorService executorService,
+                         FPSCounter fpsCounter)
     {
         this.port = port;
         this.securityPreprocessor = securityPreprocessor;
+        this.fpsCounter = fpsCounter;
 
         int arraySize = getArraySize();
 
@@ -101,6 +104,8 @@ public class MediaReceiver implements ConnectionStatusObserver {
                         Optional<MediaFrame> mediaFrame = assembler.handleDatagram(packet, packet.length);
 
                         if (mediaFrame.isPresent()) {
+                            if (code == MediaCode.VIDEO_FRAME)
+                                fpsCounter.onFrameReceived();
                             getStreamHandler(code).addMediaFrame(mediaFrame.get());
                         }
                     } catch (InterruptedException consumed) {
@@ -182,5 +187,6 @@ public class MediaReceiver implements ConnectionStatusObserver {
 
     public void clearFragmentBuffer(MediaCode code) {
         getFragmentAssembler(code).clearBuffer();
+        fpsCounter.forceSlowDownTo(5);
     }
 }

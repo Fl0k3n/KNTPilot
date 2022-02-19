@@ -22,6 +22,8 @@ class SoundStreamer(SoundCapturedObserver):
             self.sound_capturer.stop_capturing()
             self.buffer.put('\0')  # wake from blocking wait on buffer data
 
+        logging.info("sound streamer stopped")
+
     def on_frame_captured(self, frame: bytes):
         with self.stream_lock:
             if self.keep_streaming:
@@ -45,6 +47,7 @@ class SoundStreamer(SoundCapturedObserver):
 
             with self.stream_lock:
                 if not self.keep_streaming:
+                    logging.info("sound streamer stop acked")
                     self._flush_buffer()
                     break
             try:

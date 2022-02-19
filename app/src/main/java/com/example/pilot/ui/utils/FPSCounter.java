@@ -6,15 +6,15 @@ public class FPSCounter {
     private final double alpha = 0.875;
     private final AtomicLong frameTimeApproxMs;
     private long lastUpdateTimestampMs;
-    private final int expected_fps;
+    private final int expectedFps;
 
-    public FPSCounter(int expected_fps) {
-        this.expected_fps = expected_fps;
-        this.frameTimeApproxMs = new AtomicLong(1 / expected_fps);// estimate perfect at init
+    public FPSCounter(int expectedFps) {
+        this.expectedFps = expectedFps;
+        this.frameTimeApproxMs = new AtomicLong(1000 / expectedFps);// estimate perfect at init
         lastUpdateTimestampMs = -1;
     }
 
-    public void onFrameDisplayed() {
+    public void onFrameReceived() {
         long now = System.currentTimeMillis();
 
         if(lastUpdateTimestampMs != -1) {
@@ -22,6 +22,10 @@ public class FPSCounter {
         }
 
         lastUpdateTimestampMs = now;
+    }
+
+    public void forceSlowDownTo(int fps) {
+        frameTimeApproxMs.set(1000 / fps);
     }
 
     public int getFps() {
@@ -38,6 +42,6 @@ public class FPSCounter {
     }
 
     public void reset() {
-        frameTimeApproxMs.set(1 / expected_fps);
+        frameTimeApproxMs.set(1000 / expectedFps);
     }
 }

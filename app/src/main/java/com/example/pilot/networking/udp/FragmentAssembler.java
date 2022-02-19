@@ -9,7 +9,7 @@ public class FragmentAssembler implements StreamSkippedObserver {
     private final boolean requiresFragmentation;
 
     public FragmentAssembler(boolean requiresFragmentation) {
-        this.fragmentBuffer = new FragmentBuffer();
+        this.fragmentBuffer = new FragmentBuffer(-1);
         this.requiresFragmentation = requiresFragmentation;
     }
 
@@ -67,6 +67,6 @@ public class FragmentAssembler implements StreamSkippedObserver {
     }
 
     public synchronized void clearBuffer() {
-        this.fragmentBuffer = new FragmentBuffer();
+        this.fragmentBuffer = new FragmentBuffer(fragmentBuffer.getLastSeq());
     }
 }
