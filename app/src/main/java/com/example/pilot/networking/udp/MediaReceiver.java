@@ -28,7 +28,7 @@ public class MediaReceiver implements ConnectionStatusObserver {
     private final static String TAG = "Media Receiver";
     private final static String IP_ADDR = "0.0.0.0";
 
-    private final int port;
+    private int port;
     private final static int MAX_DATAGRAM_SIZE = 1500;
     private DatagramSocket socket;
 
@@ -60,6 +60,8 @@ public class MediaReceiver implements ConnectionStatusObserver {
 
         this.executorService = executorService;
     }
+
+
 
     private int getArraySize() {
         MsgCode[] codes = MsgCode.values();
@@ -148,6 +150,7 @@ public class MediaReceiver implements ConnectionStatusObserver {
             socket = new DatagramSocket(null);
             socket.setReuseAddress(true);
             socket.bind(new InetSocketAddress(IP_ADDR, port));
+            Log.d(TAG, "listening at " + IP_ADDR + ":" + port);
 
             initReceiverTask();
         } catch (SocketException e) {

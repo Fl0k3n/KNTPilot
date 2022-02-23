@@ -1,3 +1,4 @@
+import logging
 import atexit
 import socket
 from socket import AF_INET, SOCK_DGRAM
@@ -25,6 +26,8 @@ class MediaHandler(ConnectionStateObserver, MediaSender):
         session.set_udp_socket(self.serv_sock)
         session.set_udp_secret_key(self.msg_security_preproc.generate_key())
         session.set_udp_peer_addr(ip_addr, self.remote_port)
+
+        logging.info(f'setting remote address as {ip_addr}:{self.remote_port}')
 
         self.data_sender = DataSender(session, self.msg_security_preproc)
 

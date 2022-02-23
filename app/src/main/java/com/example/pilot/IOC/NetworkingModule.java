@@ -19,17 +19,16 @@ import dagger.Provides;
 public class NetworkingModule {
     private static final int AUDIO_PREFETCH_MS = 128;
     private static final int VIDEO_PREFETCH_MS = 128;
+    private static final int CLIENT_UDP_PORT = 9549;
 
 
     private final String serverIpAddr;
     private final int serverPort;
-    private final int clientUDPPort;
 
-    public NetworkingModule(String serverIpAddr, int serverPort, int clientUDPPort)
+    public NetworkingModule(String serverIpAddr, int serverPort)
     {
         this.serverPort = serverPort;
         this.serverIpAddr = serverIpAddr;
-        this.clientUDPPort = clientUDPPort;
     }
 
 
@@ -48,7 +47,7 @@ public class NetworkingModule {
     @Provides
     @Named("client udp port")
     public int provideClientUdpPort() {
-        return clientUDPPort;
+        return CLIENT_UDP_PORT;
     }
 
     @Provides

@@ -152,9 +152,8 @@ public class MainActivity extends AppCompatActivity implements GuiRunner, Connec
 
         String serverIpAddr = preferencesLoader.getIPAddr();
         int serverPort = preferencesLoader.getPort();
-        int clientMediaPort = serverPort;
 
-        NetworkingModule networkingModule = new NetworkingModule(serverIpAddr, serverPort, clientMediaPort);
+        NetworkingModule networkingModule = new NetworkingModule(serverIpAddr, serverPort);
 
         DaggerAppComponent
                 .builder()
